@@ -13,6 +13,7 @@ sub XXX { $DEBUG ? warn "XXX ",Dumper( @_ ) : {} };
 
 my $stat;
 my $mac_to_name;
+my $instance_tap;
 my $lines;
 
 my @nodes = @ARGV;
@@ -24,6 +25,8 @@ my $ssh = '';
 if ( @nodes ) {
 	$hostname = shift @nodes;
 	$ssh = "ssh $hostname ";
+	$hostname =~ s/\..+$//; # -s
+	warn "## hostname $hostname\n";
 }
 
 # if prefixed with _ it will be hiddden from output, _args must be last!
@@ -59,15 +62,15 @@ sub DD_hh_mm_ss {
 	return $t_sec;
 }
 
-sub shortname {
-	my $hostname = shift;
-	$hostname =~ s/\..+$//; # -s
-	return $hostname;
+sub sh {
+	my $cmd = join(' ', @_);
+	$cmd = "$ssh '$cmd'";
+	warn "## $cmd\n";
+	open(my $fh, '-|', $cmd);
+	return $fh;
 }
 
-my $cmd = $ssh . 'ps --no-headers axwwo ' . join(',', ps_cols_all);
-warn "## $cmd\n";
-open(my $ps, '-|', $cmd);
+my $ps = sh 'ps --no-headers axwwo ' . join(',', ps_cols_all);
 while(<$ps>) {
 	chomp;
 	s/^\s*//;
@@ -82,11 +85,10 @@ while(<$ps>) {
 		my $name = $1;
 		$stat->{$name}->{$_} = $h{$_} foreach ps_cols_all;
 
-		$stat->{$name}->{node} = shortname $hostname;
-
+		$stat->{$name}->{node} = $hostname;
 
 		while ( $h{_args} =~ m/mac=([0-9a-fA-F:]+)/g ) {
-			$mac_to_name->{$1} = $name;
+			$mac_to_name->{$hostname}->{$1} = $name;
 		}
 
 	} else {
@@ -97,7 +99,16 @@ while(<$ps>) {
 
 }
 
-open(my $ip, '-|', $ssh . 'ip -s -o link');
+
+my $tap = sh('grep . /var/run/ganeti/kvm-hypervisor/nic/*/*');
+while(<$tap>) {
+	chomp;
+	warn "## $tap\n";
+	my @p = split(/\//,$_);
+	push @{ $instance_tap->{$hostname}->{ $p[-2] } }, $p[-1];
+}
+
+my $ip = sh('ip -s -o link');
 while(<$ip>) {
 	chomp;
 	if ( m/master\s+(\S+).+ether\s+([0-9a-fA-F:]+).+RX:\s+.+\\\s+(\d+).+TX:\s+.+\\\s+(\d+)/ ) {
@@ -112,9 +123,29 @@ while(<$ip>) {
 	}
 }
 
+# dump some useful data structures
+
+sub tab_dump {
+	my ( $name, $hash ) = @_;
+	warn "# $name\n";
+	foreach my $key ( sort keys %$hash ) {
+		warn $key, "\t$hostname\t", $hash->{$key}, "\n";
+	}
+}
+
+tab_dump 'mac_to_name',  $mac_to_name;
+warn Dumper( $mac_to_name );
+tab_dump 'instance_tap', $instance_tap;
+warn Dumper( $instance_tap );
+
 goto next_node if @nodes;
 
+
 warn "# stat ", Dumper( $stat ) if $DEBUG;
+
+
+# dump tablable ascii output
+
 XXX( @ps_cols );
 
 sub push_line {
@@ -134,8 +165,6 @@ foreach my $name ( sort keys %$stat ) {
 #	print join("\t", $name, map { $stat->{$name}->{$_} } ps_cols_visible ), "\n";
 	push_line( $name, map { $stat->{$name}->{$_} } ps_cols_visible );
 }
-
-warn '# mac_to_name ', Dumper( $mac_to_name );
 
 XXX $lines;
 
