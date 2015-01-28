@@ -9,7 +9,7 @@ my $hostname = `hostname -s`;
 chomp $hostname;
 
 use Data::Dumper;
-sub XXX { warn "XXX ",Dumper( @_ ) };
+sub XXX { $DEBUG ? warn "XXX ",Dumper( @_ ) : {} };
 
 my $ssh = '';
 if ( @ARGV ) {
@@ -40,7 +40,7 @@ sub DD_hh_mm_ss {
 		$t_sec *= $f[$i];
 	}
 
-	warn "# DD-hh:mm:ss $t -> $t_sec\n";
+	warn "# DD-hh:mm:ss $t -> $t_sec\n" if $DEBUG;
 	return $t_sec;
 }
 
@@ -74,7 +74,7 @@ while(<$ps>) {
 
 }
 
-warn "# mac_to_name ", XXX( $mac_to_name );
+warn '# mac_to_name ', Dumper( $mac_to_name );
 
 open(my $ip, '-|', $ssh . 'ip -s -o link');
 while(<$ip>) {
@@ -91,7 +91,7 @@ while(<$ip>) {
 	}
 }
 
-warn "# stat = ", XXX( $stat );
+warn "# stat ", Dumper( $stat ) if $DEBUG;
 XXX( @ps_cols );
 
 my $lines;
@@ -102,7 +102,7 @@ sub push_line {
 		$lines->{len}->[$i] ||= $len;
 		$lines->{len}->[$i] = $len if $len > $lines->{len}->[$i];
 	}
-	push @{ $lines->{line} }, [ @l ];
+	push @{ $lines->{line} }, [ map { ! defined $_ ? '-' : $_ } @l ];
 }
 
 push_line '#name', ps_cols_visible;
@@ -116,7 +116,7 @@ foreach my $name ( sort keys %$stat ) {
 XXX $lines;
 
 my $fmt = join(' ', map { '%' . $_ . 's' } @{ $lines->{len} } ) . "\n";
-warn "# fmt = [$fmt]";
+warn "# fmt = [$fmt]" if $DEBUG;
 foreach my $line ( @{ $lines->{line} } ) {
 	printf $fmt, @$line;
 }
