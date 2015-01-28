@@ -1,0 +1,122 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+use autodie;
+
+my $DEBUG = $ENV{DEBUG} || 0;
+
+my $hostname = `hostname -s`;
+chomp $hostname;
+
+use Data::Dumper;
+sub XXX { warn "XXX ",Dumper( @_ ) };
+
+my $ssh = '';
+if ( @ARGV ) {
+	$hostname = $ARGV[0];
+	$ssh = "ssh $hostname ";
+}
+
+# if prefixed with _ it will be hiddden from output, _args must be last!
+my @ps_cols = qw( user pid pcpu pmem vsz cputime etimes _args);
+
+sub ps_cols_all { map { my $t = $_; $t =~ s/^_//; $t } @ps_cols };
+sub ps_cols_visible { grep { ! /^_/ } @ps_cols };
+
+my $stat;
+my $mac_to_name;
+
+sub DD_hh_mm_ss {
+	my $t = shift;
+	# [[DD-]hh:]mm:ss.
+	my @f = reverse ( 24, 60, 60, 1 );
+	my @p = reverse split(/[-:]/, $t);
+	my $t_sec = 0;
+
+	for ( 0 .. $#p ) {
+		my $i = $#p - $_;
+#warn "### $i $p[$i] $f[$i]\n";
+		$t_sec += $p[$i];
+		$t_sec *= $f[$i];
+	}
+
+	warn "# DD-hh:mm:ss $t -> $t_sec\n";
+	return $t_sec;
+}
+
+my $cmd = 'ps --no-headers axwwo ' . join(',', ps_cols_all);
+warn "## $cmd\n";
+open(my $ps, '-|', $ssh . $cmd);
+while(<$ps>) {
+	chomp;
+	s/^\s*//;
+
+	my %h;
+	@h{@ps_cols} = split(/\s+/, $_, $#ps_cols + 1);
+
+#XXX 'h = ', \%h;
+	if ( $h{user} =~ m/gnt/ && $h{_args} =~ m/qemu.*-name\s+(\S+)/ ) {
+
+		my $name = $1;
+		$stat->{$name}->{$_} = $h{$_} foreach ps_cols_all;
+
+		$stat->{$name}->{cputime_} = $stat->{$name}->{cputime} = DD_hh_mm_ss( $stat->{$name}->{cputime} );
+
+		while ( $h{_args} =~ m/mac=([0-9a-fA-F:]+)/g ) {
+			$mac_to_name->{$1} = $name;
+		}
+
+	} else {
+#		warn "## SKIP [$_]\n";
+		$stat->{ '__' . $hostname }->{$_} += $h{$_} foreach qw( pcpu pmem vsz );
+		
+	}
+
+}
+
+warn "# mac_to_name ", XXX( $mac_to_name );
+
+open(my $ip, '-|', $ssh . 'ip -s -o link');
+while(<$ip>) {
+	chomp;
+	if ( m/master\s+(\S+).+ether\s+([0-9a-fA-F:]+).+RX:\s+.+\\\s+(\d+).+TX:\s+.+\\\s+(\d+)/ ) {
+		my ( $br, $mac, $rx, $tx ) = ( $1, $2, $3, $4 );
+		if ( my $name = $mac_to_name->{$mac} ) {
+			$stat->{$name}->{link}->{ $br } = [ $rx, $tx ];
+		} else {
+			warn "## SKIP MAC $mac [$_]\n" if $DEBUG;
+		}
+	} else {
+		warn "## SKIP $_\n" if $DEBUG;
+	}
+}
+
+warn "# stat = ", XXX( $stat );
+XXX( @ps_cols );
+
+my $lines;
+sub push_line {
+	my @l = @_;
+	foreach my $i ( 0 .. $#l ) {
+		my $len = length($l[$i]) || 0;
+		$lines->{len}->[$i] ||= $len;
+		$lines->{len}->[$i] = $len if $len > $lines->{len}->[$i];
+	}
+	push @{ $lines->{line} }, [ @l ];
+}
+
+push_line '#name', ps_cols_visible;
+
+foreach my $name ( sort keys %$stat ) {
+#	printf "%6.2f %6.2f %8d %6d %6s %s\n", ( map { $stat->{$name}->{$_} || '' } qw( pcpu pmem vsz pid user ) ), $name;
+#	print join("\t", $name, map { $stat->{$name}->{$_} } ps_cols_visible ), "\n";
+	push_line( $name, map { $stat->{$name}->{$_} } ps_cols_visible );
+}
+
+XXX $lines;
+
+my $fmt = join(' ', map { '%' . $_ . 's' } @{ $lines->{len} } ) . "\n";
+warn "# fmt = [$fmt]";
+foreach my $line ( @{ $lines->{line} } ) {
+	printf $fmt, @$line;
+}
