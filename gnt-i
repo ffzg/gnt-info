@@ -15,10 +15,14 @@ my $stat;
 my $mac_to_name;
 my $lines;
 
-next_argv:
+my @nodes = @ARGV;
+
+@nodes = map { chomp ; $_ } `gnt-node list -o name --no-header` unless @nodes;
+
+next_node:
 my $ssh = '';
-if ( @ARGV ) {
-	$hostname = shift @ARGV;
+if ( @nodes ) {
+	$hostname = shift @nodes;
 	$ssh = "ssh $hostname ";
 }
 
@@ -99,7 +103,7 @@ while(<$ip>) {
 	}
 }
 
-goto next_argv if @ARGV;
+goto next_node if @nodes;
 
 warn "# stat ", Dumper( $stat ) if $DEBUG;
 XXX( @ps_cols );
