@@ -14,6 +14,7 @@ sub XXX { $DEBUG ? warn "XXX ",Dumper( @_ ) : {} };
 my $stat;
 my $mac_to_name;
 my $instance_tap;
+my $tap_instance;
 my $lines;
 
 my @nodes = @ARGV;
@@ -42,7 +43,7 @@ my @ps_cols = qw( user pid
 	_args);
 
 sub ps_cols_all { map { my $t = $_; $t =~ s/^_//; $t } @ps_cols };
-sub ps_cols_visible { 'node', grep { ! /^_/ } @ps_cols };
+sub ps_cols_visible { 'node', grep { ! /^_/ } @ps_cols, 'rx', 'tx' };
 
 sub DD_hh_mm_ss {
 	my $t = shift;
@@ -93,7 +94,10 @@ while(<$ps>) {
 
 	} else {
 #		warn "## SKIP [$_]\n";
-		$stat->{ '__' . $hostname }->{$_} += $h{$_} foreach qw( pcpu pmem vsz rss cputime etimes maj_flt min_flt );
+		$stat->{ '__' . $hostname }->{$_} += $h{$_} foreach qw( pcpu pmem vsz rss
+			nlwp cputime etimes
+			maj_flt min_flt
+		);
 		
 	}
 
@@ -106,22 +110,51 @@ while(<$tap>) {
 	warn "## $tap\n";
 	my @p = split(/\//,$_);
 	push @{ $instance_tap->{$hostname}->{ $p[-2] } }, $p[-1];
+
+	my $if = $p[-1];
+	$if =~ s/\d://;
+	$tap_instance->{$hostname}->{$if} = $p[-2];
 }
+
+=for later
 
 my $ip = sh('ip -s -o link');
 while(<$ip>) {
 	chomp;
 	if ( m/master\s+(\S+).+ether\s+([0-9a-fA-F:]+).+RX:\s+.+\\\s+(\d+).+TX:\s+.+\\\s+(\d+)/ ) {
-		my ( $br, $mac, $rx, $tx ) = ( $1, $2, $3, $4 );
-		if ( my $name = $mac_to_name->{$mac} ) {
-			$stat->{$name}->{link}->{ $br } = [ $rx, $tx ];
+		my ( $if, $mac, $rx, $tx ) = ( $1, $2, $3, $4 );
+		if ( my $name = $tap_instance->{$hostname}->{$if} ) {
+			$stat->{$name}->{link}->{ $if } = [ $rx, $tx ];
+			warn "## ip $name $ip $mac $rx $tx\n";
 		} else {
-			warn "## SKIP MAC $mac [$_]\n" if $DEBUG;
+			warn "## ip SKIP $if $mac $rx $tx\n"; # XXX if $DEBUG;
 		}
 	} else {
 		warn "## SKIP $_\n" if $DEBUG;
 	}
 }
+
+=cut
+
+my $dev = sh 'grep : /proc/net/dev';
+while(<$dev>) {
+	chomp;
+	s/^\s+//;
+	my @l = split(/[:\s]+/, $_);
+warn "XXX $_ -> ",Dumper( \@l );
+	if ( my $instance = $tap_instance->{$hostname}->{ $l[0] } ) {
+			$stat->{$instance}->{rx} += $l[1];
+			$stat->{$instance}->{tx} += $l[9];
+	} elsif ( $l[0] =~ m/eth/ ) { # connect hardware eth devices under node
+			$stat->{ '__' . $hostname }->{rx} += $l[1];
+			$stat->{ '__' . $hostname }->{tx} += $l[9];
+	}
+}
+
+
+goto next_node if @nodes;
+
+
 
 # dump some useful data structures
 
@@ -133,15 +166,16 @@ sub tab_dump {
 	}
 }
 
+
+
 tab_dump 'mac_to_name',  $mac_to_name;
 warn Dumper( $mac_to_name );
 tab_dump 'instance_tap', $instance_tap;
 warn Dumper( $instance_tap );
+warn Dumper( $tap_instance );
 
-goto next_node if @nodes;
 
-
-warn "# stat ", Dumper( $stat ) if $DEBUG;
+warn "# stat ", Dumper( $stat ); # XXX if $DEBUG;
 
 
 # dump tablable ascii output
