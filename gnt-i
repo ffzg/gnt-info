@@ -39,7 +39,7 @@ my @ps_cols = qw( user pid
 	_args);
 
 sub ps_cols_all { map { my $t = $_; $t =~ s/^_//; $t } @ps_cols };
-sub ps_cols_visible { grep { ! /^_/ } @ps_cols };
+sub ps_cols_visible { 'node', grep { ! /^_/ } @ps_cols };
 
 sub DD_hh_mm_ss {
 	my $t = shift;
@@ -59,6 +59,12 @@ sub DD_hh_mm_ss {
 	return $t_sec;
 }
 
+sub shortname {
+	my $hostname = shift;
+	$hostname =~ s/\..+$//; # -s
+	return $hostname;
+}
+
 my $cmd = $ssh . 'ps --no-headers axwwo ' . join(',', ps_cols_all);
 warn "## $cmd\n";
 open(my $ps, '-|', $cmd);
@@ -75,6 +81,9 @@ while(<$ps>) {
 
 		my $name = $1;
 		$stat->{$name}->{$_} = $h{$_} foreach ps_cols_all;
+
+		$stat->{$name}->{node} = shortname $hostname;
+
 
 		while ( $h{_args} =~ m/mac=([0-9a-fA-F:]+)/g ) {
 			$mac_to_name->{$1} = $name;
