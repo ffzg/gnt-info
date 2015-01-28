@@ -11,9 +11,14 @@ chomp $hostname;
 use Data::Dumper;
 sub XXX { $DEBUG ? warn "XXX ",Dumper( @_ ) : {} };
 
+my $stat;
+my $mac_to_name;
+my $lines;
+
+next_argv:
 my $ssh = '';
 if ( @ARGV ) {
-	$hostname = $ARGV[0];
+	$hostname = shift @ARGV;
 	$ssh = "ssh $hostname ";
 }
 
@@ -31,9 +36,6 @@ my @ps_cols = qw( user pid
 
 sub ps_cols_all { map { my $t = $_; $t =~ s/^_//; $t } @ps_cols };
 sub ps_cols_visible { grep { ! /^_/ } @ps_cols };
-
-my $stat;
-my $mac_to_name;
 
 sub DD_hh_mm_ss {
 	my $t = shift;
@@ -53,9 +55,9 @@ sub DD_hh_mm_ss {
 	return $t_sec;
 }
 
-my $cmd = 'ps --no-headers axwwo ' . join(',', ps_cols_all);
+my $cmd = $ssh . 'ps --no-headers axwwo ' . join(',', ps_cols_all);
 warn "## $cmd\n";
-open(my $ps, '-|', $ssh . $cmd);
+open(my $ps, '-|', $cmd);
 while(<$ps>) {
 	chomp;
 	s/^\s*//;
@@ -82,8 +84,6 @@ while(<$ps>) {
 
 }
 
-warn '# mac_to_name ', Dumper( $mac_to_name );
-
 open(my $ip, '-|', $ssh . 'ip -s -o link');
 while(<$ip>) {
 	chomp;
@@ -99,10 +99,11 @@ while(<$ip>) {
 	}
 }
 
+goto next_argv if @ARGV;
+
 warn "# stat ", Dumper( $stat ) if $DEBUG;
 XXX( @ps_cols );
 
-my $lines;
 sub push_line {
 	my @l = @_;
 	foreach my $i ( 0 .. $#l ) {
@@ -121,6 +122,8 @@ foreach my $name ( sort keys %$stat ) {
 	push_line( $name, map { $stat->{$name}->{$_} } ps_cols_visible );
 }
 
+warn '# mac_to_name ', Dumper( $mac_to_name );
+
 XXX $lines;
 
 my $fmt = join(' ', map { '%' . $_ . 's' } @{ $lines->{len} } ) . "\n";
@@ -128,3 +131,4 @@ warn "# fmt = [$fmt]" if $DEBUG;
 foreach my $line ( @{ $lines->{line} } ) {
 	printf $fmt, @$line;
 }
+
