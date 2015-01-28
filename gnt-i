@@ -107,7 +107,7 @@ while(<$ps>) {
 my $tap = sh('grep . /var/run/ganeti/kvm-hypervisor/nic/*/*');
 while(<$tap>) {
 	chomp;
-	warn "## $tap\n";
+#	warn "## tap $_\n";
 	my @p = split(/\//,$_);
 	push @{ $instance_tap->{$hostname}->{ $p[-2] } }, $p[-1];
 
@@ -141,7 +141,7 @@ while(<$dev>) {
 	chomp;
 	s/^\s+//;
 	my @l = split(/[:\s]+/, $_);
-warn "XXX $_ -> ",Dumper( \@l );
+#warn "XXX $_ -> ",Dumper( \@l );
 	if ( my $instance = $tap_instance->{$hostname}->{ $l[0] } ) {
 			$stat->{$instance}->{rx} += $l[1];
 			$stat->{$instance}->{tx} += $l[9];
@@ -162,25 +162,27 @@ sub tab_dump {
 	my ( $name, $hash ) = @_;
 	warn "# $name\n";
 	foreach my $key ( sort keys %$hash ) {
-		warn $key, "\t$hostname\t", $hash->{$key}, "\n";
+		warn $key, "\t", $hash->{$key}, "\n";
 	}
 }
 
 
 
-tab_dump 'mac_to_name',  $mac_to_name;
-warn Dumper( $mac_to_name );
-tab_dump 'instance_tap', $instance_tap;
-warn Dumper( $instance_tap );
-warn Dumper( $tap_instance );
+foreach my $node ( sort keys %$mac_to_name ) {
+	tab_dump "$node mac instance",  $mac_to_name->{$node};
+}
+#warn Dumper( $mac_to_name );
+#tab_dump 'instance_tap', $instance_tap;
+#warn Dumper( $instance_tap );
+#warn Dumper( $tap_instance );
 
 
-warn "# stat ", Dumper( $stat ); # XXX if $DEBUG;
+warn "# stat ", Dumper( $stat ) if $DEBUG;
 
 
 # dump tablable ascii output
 
-XXX( @ps_cols );
+#XXX( @ps_cols );
 
 sub push_line {
 	my @l = @_;
@@ -200,7 +202,7 @@ foreach my $name ( sort keys %$stat ) {
 	push_line( $name, map { $stat->{$name}->{$_} } ps_cols_visible );
 }
 
-XXX $lines;
+#XXX $lines;
 
 my $fmt = join(' ', map { '%' . $_ . 's' } @{ $lines->{len} } ) . "\n";
 warn "# fmt = [$fmt]" if $DEBUG;
