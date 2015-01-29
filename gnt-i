@@ -59,7 +59,7 @@ sub DD_hh_mm_ss {
 		$t_sec *= $f[$i];
 	}
 
-	warn "# DD-hh:mm:ss $t -> $t_sec\n" if $DEBUG;
+#	warn "# DD-hh:mm:ss $t -> $t_sec\n" if $DEBUG;
 	return $t_sec;
 }
 
@@ -104,11 +104,11 @@ while(<$ps>) {
 }
 
 
-my $tap = sh('grep . /var/run/ganeti/kvm-hypervisor/nic/*/*');
+my $tap = sh('grep -H . /var/run/ganeti/kvm-hypervisor/nic/*/*');
 while(<$tap>) {
 	chomp;
-#	warn "## tap $_\n";
 	my @p = split(/\//,$_);
+#	warn "## tap ", Dumper( \@p ), "$_\n";
 	push @{ $instance_tap->{$hostname}->{ $p[-2] } }, $p[-1];
 
 	my $if = $p[-1];
