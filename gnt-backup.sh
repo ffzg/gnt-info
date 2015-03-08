@@ -7,7 +7,7 @@ while true ; do
 
 instance=$1
 if [ -z "$instance" ] ; then
-	ssh $node zfs list -t all -r $ganeti_export
+	ssh $node zfs list -o name,written,compressratio -t snapshot -r $ganeti_export
 	exit 0
 fi
 
