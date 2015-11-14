@@ -1,4 +1,8 @@
 #!/bin/sh -xe
 
-gnt-instance modify -H initrd_path=/boot/initrd.img-3.10-kvmU,kernel_path=/boot/vmlinuz-3.10-kvmU $1
+KERNEL=3.16
+#KERNEL=3.10
+#KERNEL=3.2
+
+gnt-instance modify -H initrd_path=/boot/initrd.img-$KERNEL-kvmU,kernel_path=/boot/vmlinuz-$KERNEL-kvmU $1
 
