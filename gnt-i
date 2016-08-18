@@ -19,7 +19,7 @@ my $lines;
 
 my @nodes = @ARGV;
 
-@nodes = map { chomp ; $_ } `gnt-node list -o name --no-header` unless @nodes;
+@nodes = map { chomp ; s/\s+N$// ; $_ } grep { /N$/ } `gnt-node list -o name,offline --no-header` unless @nodes;
 
 next_node:
 my $ssh = '';
