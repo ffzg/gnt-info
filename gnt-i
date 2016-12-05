@@ -2,8 +2,10 @@
 use warnings;
 use strict;
 use autodie;
+use Storable;
 
 my $DEBUG = $ENV{DEBUG} || 0;
+my $INFLUX = 'http://10.60.0.89:8186/write';
 
 my $hostname = `hostname -s`;
 chomp $hostname;
@@ -204,9 +206,34 @@ foreach my $name ( sort keys %$stat ) {
 
 #XXX $lines;
 
+open(my $influx_fh, '>', '/dev/shm/ganeti.influx');
+
+my $last_lines;
+$last_lines = retrieve('/dev/shm/ganeti.last.storable') if -e '/dev/shm/ganeti.last.storable';
+
 my $fmt = join(' ', map { '%' . $_ . 's' } @{ $lines->{len} } ) . "\n";
 warn "# fmt = [$fmt]" if $DEBUG;
-foreach my $line ( @{ $lines->{line} } ) {
+foreach my $i ( 0 .. $#{ $lines->{line} } ) {
+	my $line = $lines->{line}->[$i];
 	printf $fmt, @$line;
+
+	next unless $last_lines;
+
+	my $last_line = $last_lines->[$i];
+	my @c = ( 'host', ps_cols_visible );
+	my @influx;
+	foreach my $j ( 0 .. $#$line ) {
+		#push @influx, $c[$j] . '=' . $line->[$j];
+		push @influx, $c[$j] . '='
+			. ( $j >= 9 && $j != 13 ? $line->[$j] - $last_line->[$j] : $line->[$j] )
+			. ( $j == 3 || $j >= 6 && $j != 9 ? 'i' : '' );
+	}
+	my $influx = join(',', @influx);
+	$influx =~ s/,user=([^,]+)/ user="$1"/;
+	print $influx_fh "ganeti,$influx\n" unless $influx =~ m/(#|__)/;
+
 }
 
+store $lines->{line}, '/dev/shm/ganeti.last.storable';
+
+system "curl -i -XPOST 'http://127.0.0.1:8186/write?db=ganeti' --data-binary '@/dev/shm/ganeti.influx'";
