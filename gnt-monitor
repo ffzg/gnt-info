@@ -19,12 +19,20 @@ my $last;
 
 while(1) {
 
+my $skip;
+
 foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/pid/*' ) {
 
 	open(my $fh, '<', $instance);
 	my $pid = <$fh>; chomp $pid;
 
 	$instance =~ s{^.*/}{};
+
+	if ( ! -d "/proc/$pid" ) {
+		$skip->{$instance}++;
+		XXX $skip;
+		next;
+	}
 
 	my $vcpu = $last->{$instance}->{vcpu};
 
@@ -54,9 +62,19 @@ foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/pid/*' ) {
 
 foreach my $glob ( glob '/var/run/ganeti/instance-disks/*' ) {
 	my ( $instance, $disk ) = split(/:/,$glob,2);
-	my $dev = readlink $glob;
 	$instance =~ s{^.*/}{};
+
+	next unless exists $stat->{$instance};
+
+	my $dev = readlink $glob;
 	$dev =~ s{^.*dev/}{};
+
+	if ( ! -e "/sys/class/block/$dev" ) {
+		$skip->{$instance}++;
+		XXX $skip;
+		next;
+	}
+
 	open( my $fh, '<', "/sys/class/block/$dev/stat" );
 	my $v = <$fh>; chomp $v; $v =~ s/^\s+//;
 	my @s = split(/\s+/, $v );
@@ -80,14 +98,18 @@ foreach my $glob ( glob '/var/run/ganeti/instance-disks/*' ) {
 
 }
 
-foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
-	foreach my $nic ( glob "$instance/*" ) {
+foreach my $full_instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
+	my $instance = $full_instance;
+	$instance =~ s{^.*/}{};
+	next unless exists $stat->{$instance};
+
+	foreach my $nic ( glob "$full_instance/*" ) {
 		open(my $fh, '<', $nic);
 		my $dev = <$fh>;
+
+		next unless -e "/sys/class/net/$dev";
+
 		$nic =~ s{^.*/}{};
-		$instance =~ s{^.*/}{};
-		my $vlan = readlink "/sys/class/net/$dev/master";
-		$vlan =~ s/^.*br/br/;
 
 		my $d;
 
@@ -99,7 +121,11 @@ foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 		if ( my $l = $last->{$instance}->{nic}->[$nic] ) {
 			$stat->{$instance}->{nic}->[$nic]->{$_} = $d->{$_} - $l->{$_} foreach keys %$d;
 			$stat->{$instance}->{nic}->[$nic]->{dev} = $dev;
-			$stat->{$instance}->{nic}->[$nic]->{vlan} = $vlan;
+			if ( -e "/sys/class/net/$dev/master" ) {
+				my $vlan = readlink "/sys/class/net/$dev/master";
+				$vlan =~ s/^.*br/br/;
+				$stat->{$instance}->{nic}->[$nic]->{vlan} = $vlan;
+			}
 		}
 		$last->{$instance}->{nic}->[$nic] = $d;
 
@@ -122,6 +148,9 @@ sub dump4influx {
 }
 
 foreach my $instance ( keys %$stat ) {
+
+	next if $skip->{$instance};
+
 	print $fh qq{cpu,node="$node",instance="$instance" cpu=}, $stat->{$instance}->{cpu}, "\n";
 
 	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
