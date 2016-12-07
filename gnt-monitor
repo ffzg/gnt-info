@@ -1,0 +1,55 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+use autodie;
+
+my $DEBUG = $ENV{DEBUG} || 0;
+my $INFLUX = 'http://10.60.0.89:8186/write';
+
+my $hostname = `hostname -s`;
+chomp $hostname;
+
+use Data::Dump;
+sub XXX { $DEBUG ? warn "XXX ",Data::Dump::dump( @_ ) : {} };
+
+my $stat;
+
+foreach my $glob ( glob '/var/run/ganeti/instance-disks/*' ) {
+	my ( $instance, $disk ) = split(/:/,$glob,2);
+	my $dev = readlink $glob;
+	$instance =~ s{^.*/}{};
+	$dev =~ s{^.*dev/}{};
+	$stat->{$instance}->{disk}->[$disk]->{dev} = $dev;
+	open( my $fh, '<', "/sys/class/block/$dev/stat" );
+	my $v = <$fh>; chomp $v; $v =~ s/^\s+//;
+	my @s = split(/\s+/, $v );
+	# https://www.kernel.org/doc/Documentation/block/stat.txt
+	$stat->{$instance}->{disk}->[$disk]->{read_io} = $s[0];
+	$stat->{$instance}->{disk}->[$disk]->{read_bytes} = $s[2] * 512;
+	$stat->{$instance}->{disk}->[$disk]->{read_wait} = $s[3];
+	$stat->{$instance}->{disk}->[$disk]->{write_io} = $s[4];
+	$stat->{$instance}->{disk}->[$disk]->{write_bytes} = $s[6] * 512;
+	$stat->{$instance}->{disk}->[$disk]->{write_wait} = $s[7];
+}
+
+foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
+	foreach my $nic ( glob "$instance/*" ) {
+		open(my $fh, '<', "$nic");
+		my $dev = <$fh>;
+		$nic =~ s{^.*/}{};
+XXX $nic;
+		$instance =~ s{^.*/}{};
+		$stat->{$instance}->{nic}->[$nic]->{dev} = $dev;
+		my $vlan = readlink "/sys/class/net/$dev/master";
+		$vlan =~ s/^.*br//;
+		$stat->{$instance}->{nic}->[$nic]->{vlan} = $vlan;
+		foreach my $f (qw( rx_bytes tx_bytes rx_packets tx_packets )) {
+			open( my $fh, '<', "/sys/class/net/$dev/statistics/$f" );
+			my $v = <$fh>; chomp $v;
+			$stat->{$instance}->{nic}->[$nic]->{$f} = $v;
+		}
+	}
+}
+
+XXX $stat;
+
