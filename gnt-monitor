@@ -6,9 +6,10 @@ use POSIX;
 
 my $DEBUG = $ENV{DEBUG} || 0;
 my $INFLUX = 'http://10.60.0.89:8186/write';
+my $INTERVAL = $ENV{INTERVAL} || 1;
 
-my $hostname = `hostname -s`;
-chomp $hostname;
+my $node = `hostname -s`;
+chomp $node;
 
 use Data::Dump;
 sub XXX { $DEBUG ? warn "XXX ",Data::Dump::dump( @_ ) : {} };
@@ -72,9 +73,10 @@ foreach my $glob ( glob '/var/run/ganeti/instance-disks/*' ) {
 		my $delta;
 		$delta->{$_} = $d->{$_} - $l->{$_} foreach keys %$d;
 		$stat->{$instance}->{disk}->[$disk] = $delta;
+		$stat->{$instance}->{disk}->[$disk]->{dev} = $dev;
+		$stat->{$instance}->{disk}->[$disk]->{disk} = $disk;
 	}
 	$last->{$instance}->{disk}->[$disk] = $d;
-	$stat->{$instance}->{disk}->[$disk]->{dev} = $dev;
 
 }
 
@@ -84,10 +86,8 @@ foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 		my $dev = <$fh>;
 		$nic =~ s{^.*/}{};
 		$instance =~ s{^.*/}{};
-		$stat->{$instance}->{nic}->[$nic]->{dev} = $dev;
 		my $vlan = readlink "/sys/class/net/$dev/master";
-		$vlan =~ s/^.*br//;
-		$stat->{$instance}->{nic}->[$nic]->{vlan} = $vlan;
+		$vlan =~ s/^.*br/br/;
 
 		my $d;
 
@@ -98,6 +98,8 @@ foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 		}
 		if ( my $l = $last->{$instance}->{nic}->[$nic] ) {
 			$stat->{$instance}->{nic}->[$nic]->{$_} = $d->{$_} - $l->{$_} foreach keys %$d;
+			$stat->{$instance}->{nic}->[$nic]->{dev} = $dev;
+			$stat->{$instance}->{nic}->[$nic]->{vlan} = $vlan;
 		}
 		$last->{$instance}->{nic}->[$nic] = $d;
 
@@ -107,6 +109,36 @@ foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 XXX $stat;
 #XXX $last;
 
-sleep 1;
+open(my $fh, '>', '/dev/shm/ganeti-monitor.influx');
+
+sub dump4influx {
+	my $hash = shift;
+	my $d = Data::Dump::dump( $hash );
+	$d =~ s/[\s\r\n]+//g;
+	$d =~ s/[\Q[]{}>\E]//g;
+	$d =~ s/=(\d+),/=$1i,/g;
+	$d =~ s/,+$//;
+	return $d;
+}
+
+foreach my $instance ( keys %$stat ) {
+	print $fh qq{cpu,node="$node",instance="$instance" cpu=}, $stat->{$instance}->{cpu}, "\n";
+
+	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
+		print $fh qq{disk,node="$node",instance="$instance" },dump4influx( $disk ), "\n";
+	}
+
+	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
+		print $fh qq{nic,node="$node",instance="$instance" },dump4influx( $nic ), "\n";
+	}
+
+}
+
+close($fh);
+
+system q{curl -i -XPOST 'http://10.80.3.89:8086/write?db=ganeti' --data-binary '@/dev/shm/ganeti-monitor.influx'};
+
+
+sleep $INTERVAL;
 } #/while
 
