@@ -2,6 +2,7 @@
 use warnings;
 use strict;
 use autodie;
+use POSIX;
 
 my $DEBUG = $ENV{DEBUG} || 0;
 my $INFLUX = 'http://10.60.0.89:8186/write';
@@ -13,43 +14,99 @@ use Data::Dump;
 sub XXX { $DEBUG ? warn "XXX ",Data::Dump::dump( @_ ) : {} };
 
 my $stat;
+my $last;
+
+while(1) {
+
+foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/pid/*' ) {
+
+	open(my $fh, '<', $instance);
+	my $pid = <$fh>; chomp $pid;
+
+	$instance =~ s{^.*/}{};
+
+	my $vcpu = $last->{$instance}->{vcpu};
+
+	if ( ! $vcpu ) {
+		foreach my $fd ( glob "/proc/$pid/fd/*" ) {
+			$vcpu++ if -l $fd && readlink($fd) =~ m/kvm-vcpu/;
+		}
+
+		$last->{$instance}->{vcpu} = $vcpu;
+	}
+
+	# https://www.kernel.org/doc/Documentation/filesystems/proc.txt
+	open($fh, '<', "/proc/$pid/stat");
+	my $line = <$fh>; chomp $line;
+	my $gtime = (split(/\s+/,$line))[42]; # guest time of the task in jiffies
+
+	if ( my $last_gtime = $last->{$instance}->{gtime} ) {
+		my $clock_ticks = POSIX::sysconf( &POSIX::_SC_CLK_TCK ); # clock ticks per second
+
+		my $cpu = ( ( $gtime - $last_gtime ) * 100 ) / ( $clock_ticks * $vcpu );
+		$stat->{$instance}->{cpu} = $cpu;
+	}
+
+	$last->{$instance}->{gtime} = $gtime;
+}
+		
 
 foreach my $glob ( glob '/var/run/ganeti/instance-disks/*' ) {
 	my ( $instance, $disk ) = split(/:/,$glob,2);
 	my $dev = readlink $glob;
 	$instance =~ s{^.*/}{};
 	$dev =~ s{^.*dev/}{};
-	$stat->{$instance}->{disk}->[$disk]->{dev} = $dev;
 	open( my $fh, '<', "/sys/class/block/$dev/stat" );
 	my $v = <$fh>; chomp $v; $v =~ s/^\s+//;
 	my @s = split(/\s+/, $v );
 	# https://www.kernel.org/doc/Documentation/block/stat.txt
-	$stat->{$instance}->{disk}->[$disk]->{read_io} = $s[0];
-	$stat->{$instance}->{disk}->[$disk]->{read_bytes} = $s[2] * 512;
-	$stat->{$instance}->{disk}->[$disk]->{read_wait} = $s[3];
-	$stat->{$instance}->{disk}->[$disk]->{write_io} = $s[4];
-	$stat->{$instance}->{disk}->[$disk]->{write_bytes} = $s[6] * 512;
-	$stat->{$instance}->{disk}->[$disk]->{write_wait} = $s[7];
+	my $d = {
+		read_io => $s[0],
+		read_bytes => $s[2] * 512,
+		read_wait => $s[3],
+		write_io => $s[4],
+		write_bytes => $s[6] * 512,
+		write_wait => $s[7],
+	};
+	if ( my $l = $last->{$instance}->{disk}->[$disk] ) {
+		my $delta;
+		$delta->{$_} = $d->{$_} - $l->{$_} foreach keys %$d;
+		$stat->{$instance}->{disk}->[$disk] = $delta;
+	}
+	$last->{$instance}->{disk}->[$disk] = $d;
+	$stat->{$instance}->{disk}->[$disk]->{dev} = $dev;
+
 }
 
 foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 	foreach my $nic ( glob "$instance/*" ) {
-		open(my $fh, '<', "$nic");
+		open(my $fh, '<', $nic);
 		my $dev = <$fh>;
 		$nic =~ s{^.*/}{};
-XXX $nic;
 		$instance =~ s{^.*/}{};
 		$stat->{$instance}->{nic}->[$nic]->{dev} = $dev;
 		my $vlan = readlink "/sys/class/net/$dev/master";
 		$vlan =~ s/^.*br//;
 		$stat->{$instance}->{nic}->[$nic]->{vlan} = $vlan;
+
+		my $d;
+
 		foreach my $f (qw( rx_bytes tx_bytes rx_packets tx_packets )) {
 			open( my $fh, '<', "/sys/class/net/$dev/statistics/$f" );
 			my $v = <$fh>; chomp $v;
-			$stat->{$instance}->{nic}->[$nic]->{$f} = $v;
+			$d->{$f} = $v;
 		}
+		if ( my $l = $last->{$instance}->{nic}->[$nic] ) {
+			$stat->{$instance}->{nic}->[$nic]->{$_} = $d->{$_} - $l->{$_} foreach keys %$d;
+		}
+		$last->{$instance}->{nic}->[$nic] = $d;
+
 	}
 }
 
 XXX $stat;
+#XXX $last;
+
+sleep 1;
+} #/while
 
