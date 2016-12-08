@@ -1,4 +1,4 @@
 DC=ffzg
 RACK=3
-INFLUX=http://10.60.0.89:8186/write
+INFLUX=http://10.80.3.89:8086/write?db=ganeti
 INTERVAL=1

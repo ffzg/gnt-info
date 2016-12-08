@@ -5,7 +5,7 @@ use autodie;
 use POSIX;
 
 my $DEBUG = $ENV{DEBUG} || 0;
-my $INFLUX = $ENV{INFLUX} || 'http://10.60.0.89:8186/write';
+my $INFLUX = $ENV{INFLUX} || 'http://10.80.3.89:8086/write?db=gnt';
 my $INTERVAL = $ENV{INTERVAL} || 1;
 my $DC = $ENV{DC};
 my $RACK = $ENV{RACK};
@@ -125,7 +125,7 @@ foreach my $full_instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 			$stat->{$instance}->{nic}->[$nic]->{dev} = $dev;
 			if ( -e "/sys/class/net/$dev/master" ) {
 				my $vlan = readlink "/sys/class/net/$dev/master";
-				$vlan =~ s/^.*br/br/;
+				$vlan =~ s/^.*br//;
 				$stat->{$instance}->{nic}->[$nic]->{vlan} = $vlan;
 			}
 		}
@@ -134,19 +134,24 @@ foreach my $full_instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 	}
 }
 
-XXX $stat;
+#XXX $stat;
 #XXX $last;
 
-open(my $fh, '>', '/dev/shm/ganeti-monitor.influx');
+open(my $fh, '>', '/dev/shm/gnt-monitor.influx');
 
 sub dump4influx {
 	my $hash = shift;
-	my $d = Data::Dump::dump( $hash );
-	$d =~ s/[\s\r\n]+//g;
-	$d =~ s/[\Q[]{}>\E]//g;
-	$d =~ s/=(\d+),/=$1i,/g;
-	$d =~ s/,+$//;
-	return $d;
+	my @v;
+	foreach my $k ( keys %$hash ) {
+		my $v = $hash->{$k};
+		my ( $d, $s ) = $v =~ m/^\d+$/ ? ( '',  'i' ) :
+				$v =~ m/\w+/   ? ( '"', ''  ) :
+                                                 ( '' , ''  ) ; # float
+
+		push @v, "$k=$d$v$d$s";
+	}
+	my $i = join(',', @v);
+	return $i;
 }
 
 foreach my $instance ( keys %$stat ) {
@@ -172,8 +177,7 @@ foreach my $instance ( keys %$stat ) {
 
 close($fh);
 
-system q{curl -i -XPOST 'http://10.80.3.89:8086/write?db=ganeti' --data-binary '@/dev/shm/ganeti-monitor.influx'};
-
+system 'curl', '-XPOST', $INFLUX, '--data-binary', '@/dev/shm/gnt-monitor.influx';
 
 sleep $INTERVAL;
 } #/while
