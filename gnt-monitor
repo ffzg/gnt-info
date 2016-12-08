@@ -13,6 +13,8 @@ my $RACK = $ENV{RACK};
 my $node = `hostname -s`;
 chomp $node;
 
+warn $0 = "gnt-monitor\@$node $DC $RACK $INFLUX $INTERVAL $DEBUG";
+
 use Data::Dump;
 sub XXX { $DEBUG ? warn "XXX ",Data::Dump::dump( @_ ) : {} };
 
