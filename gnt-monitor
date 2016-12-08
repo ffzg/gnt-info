@@ -5,8 +5,10 @@ use autodie;
 use POSIX;
 
 my $DEBUG = $ENV{DEBUG} || 0;
-my $INFLUX = 'http://10.60.0.89:8186/write';
+my $INFLUX = $ENV{INFLUX} || 'http://10.60.0.89:8186/write';
 my $INTERVAL = $ENV{INTERVAL} || 1;
+my $DC = $ENV{DC};
+my $RACK = $ENV{RACK};
 
 my $node = `hostname -s`;
 chomp $node;
@@ -151,14 +153,19 @@ foreach my $instance ( keys %$stat ) {
 
 	next if $skip->{$instance};
 
-	print $fh qq{cpu,node="$node",instance="$instance" cpu=}, $stat->{$instance}->{cpu}, "\n";
+	my $location = '';
+	$location .= qq{,dc="$DC"} if $DC;
+	$location .= qq{,rack="$RACK"} if $RACK;
+
+	print $fh qq{cpu,node="$node",instance="$instance"$location cpu=}, $stat->{$instance}->{cpu}, "\n";
 
 	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
-		print $fh qq{disk,node="$node",instance="$instance" },dump4influx( $disk ), "\n";
+		print $fh qq{disk,node="$node",instance="$instance"$location },dump4influx( $disk ), "\n";
 	}
 
 	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
-		print $fh qq{nic,node="$node",instance="$instance" },dump4influx( $nic ), "\n";
+		my $vlan = delete $nic->{vlan};
+		print $fh qq{nic,node="$node",instance="$instance",vlan=${vlan}i$location },dump4influx( $nic ), "\n";
 	}
 
 }
