@@ -1,0 +1,9 @@
+[Unit]
+Description=Ganeti monitor to InfluxDB
+
+[Service]
+#Type=simple
+ExecStart=/etc/ganeti/gnt-monitor
+
+[Install]
+WantedBy=multi-user.target
