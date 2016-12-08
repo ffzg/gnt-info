@@ -2,6 +2,7 @@
 Description=Ganeti monitor to InfluxDB
 
 [Service]
+EnvironmentFile=-/etc/default/gnt-monitor
 #Type=simple
 ExecStart=/etc/ganeti/gnt-monitor
 Restart=always
