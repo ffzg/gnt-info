@@ -1,0 +1,4 @@
+DC=ffzg
+RACK=3
+INFLUX=http://10.60.0.89:8186/write
+INTERVAL=1
