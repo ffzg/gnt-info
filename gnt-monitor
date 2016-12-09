@@ -161,18 +161,18 @@ foreach my $instance ( keys %$stat ) {
 	next if $skip->{$instance};
 
 	my $location = '';
-	$location .= qq{,dc="$DC"} if $DC;
-	$location .= qq{,rack="$RACK"} if $RACK;
+	$location .= qq{,dc=$DC} if $DC;
+	$location .= qq{,rack=$RACK} if $RACK;
 
-	print $fh qq{cpu,node="$node",instance="$instance"$location cpu=}, $stat->{$instance}->{cpu}, "\n";
+	print $fh qq{cpu,node=$node,instance=$instance$location cpu=}, $stat->{$instance}->{cpu}, "\n";
 
 	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
-		print $fh qq{disk,node="$node",instance="$instance"$location },dump4influx( $disk ), "\n";
+		print $fh qq{disk,node=$node,instance=$instance$location },dump4influx( $disk ), "\n";
 	}
 
 	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
 		my $vlan = delete $nic->{vlan};
-		print $fh qq{nic,node="$node",instance="$instance",vlan="${vlan}"$location },dump4influx( $nic ), "\n";
+		print $fh qq{nic,node=$node,instance=$instance,vlan=${vlan}$location },dump4influx( $nic ), "\n";
 	}
 
 }
