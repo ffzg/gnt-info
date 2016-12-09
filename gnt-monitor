@@ -13,7 +13,11 @@ my $RACK = $ENV{RACK};
 my $node = `hostname -s`;
 chomp $node;
 
-warn $0 = "gnt-monitor\@$node $DC $RACK $INFLUX $INTERVAL $DEBUG";
+my $location = '';
+$location .= qq{,dc=$DC} if $DC;
+$location .= qq{,rack=$RACK} if $RACK;
+
+warn $0 = "gnt-monitor\@$node$location $INFLUX $INTERVAL $DEBUG";
 
 use Data::Dump;
 sub XXX { $DEBUG ? warn "XXX ",Data::Dump::dump( @_ ) : {} };
@@ -159,10 +163,6 @@ sub dump4influx {
 foreach my $instance ( keys %$stat ) {
 
 	next if $skip->{$instance};
-
-	my $location = '';
-	$location .= qq{,dc=$DC} if $DC;
-	$location .= qq{,rack=$RACK} if $RACK;
 
 	print $fh qq{cpu,node=$node,instance=$instance$location cpu=}, $stat->{$instance}->{cpu}, "\n";
 
