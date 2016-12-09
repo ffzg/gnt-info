@@ -62,6 +62,7 @@ foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/pid/*' ) {
 
 		my $cpu = ( ( $gtime - $last_gtime ) * 100 ) / ( $clock_ticks * $vcpu );
 		$stat->{$instance}->{cpu} = $cpu;
+		$stat->{$instance}->{ticks} = $gtime - $last_gtime;
 	}
 
 	$last->{$instance}->{gtime} = $gtime;
@@ -143,8 +144,6 @@ foreach my $full_instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 #XXX $stat;
 #XXX $last;
 
-open(my $fh, '>', '/dev/shm/gnt-monitor.influx');
-
 sub dump4influx {
 	my $hash = shift;
 	my @v;
@@ -160,11 +159,13 @@ sub dump4influx {
 	return $i;
 }
 
+open(my $fh, '>', '/dev/shm/gnt-monitor.influx');
+
 foreach my $instance ( keys %$stat ) {
 
 	next if $skip->{$instance};
 
-	print $fh qq{cpu,node=$node,instance=$instance$location cpu=}, $stat->{$instance}->{cpu}, "\n";
+	print $fh qq{cpu,node=$node,instance=$instance$location cpu=$stat->{$instance}->{cpu},ticks=$stat->{$instance}->{ticks}\n};
 
 	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
 		print $fh qq{disk,node=$node,instance=$instance$location },dump4influx( $disk ), "\n";
