@@ -172,7 +172,7 @@ foreach my $instance ( keys %$stat ) {
 
 	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
 		my $vlan = delete $nic->{vlan};
-		print $fh qq{nic,node="$node",instance="$instance",vlan=${vlan}i$location },dump4influx( $nic ), "\n";
+		print $fh qq{nic,node="$node",instance="$instance",vlan="${vlan}"$location },dump4influx( $nic ), "\n";
 	}
 
 }
