@@ -1,8 +1,8 @@
 #!/bin/sh -xe
 
 node=`hostname -s`
-zfs_nfs=lib10
-ganeti_export=lib10/arh-hw/ganeti/export
+zfs_nfs=lib15
+ganeti_export=lib15/ganeti/export
 
 while true ; do
 
