@@ -29,7 +29,7 @@ cat <<__SHELL__ | tee /dev/shm/$instance.sh
 
 	# we must mount filesystem read-write to allow journal recovery
 	mount /dev/ffzgvg/$lv.snap /dev/shm/$lv.snap -o noatime \
-	|| offset=\`fdisk -l /dev/ffzgvg/$lv.snap -u | grep Linux$ | grep /dev/ffzgvg/$lv.snap | head -1 | awk '{ print \$2 * 512 }'\` \
+	|| offset=\`fdisk -l /dev/ffzgvg/$lv.snap -u | grep Linux$ | grep /dev/ffzgvg/$lv.snap | head -1 | sed 's/\*/ /' | awk '{ print \$2 * 512 }'\` \
 	&& mount /dev/ffzgvg/$lv.snap /dev/shm/$lv.snap -o noatime,offset=\$offset \
 
 	rsync -ravHz --numeric-ids --sparse --delete /dev/shm/$lv.snap/ lib15::backup/$instance/$disk_nr/
