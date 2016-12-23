@@ -1,9 +1,15 @@
 #!/bin/sh -e
 
-instance=pauk
-disk=2
+instance=$1
+disk=$2
+
+if [ -z "$instance" -o -z "$disk" ] ; then
+	echo "Usage: $0 instance disk"
+	exit 1
+fi
 
 instance=`gnt-instance list --no-headers -o name $instance`
+
 node=`gnt-instance list -o pnode --no-headers $instance`
 echo "# $instance on $node"
 
