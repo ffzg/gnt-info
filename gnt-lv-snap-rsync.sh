@@ -37,6 +37,8 @@ cat <<__SHELL__ | tee /dev/shm/$instance.sh
 	umount /dev/shm/$lv.snap
 
 	lvremove -f /dev/ffzgvg/$lv.snap
+
+	rmdir /dev/shm/$lv.snap
 __SHELL__
 
 	scp /dev/shm/$instance.sh $node:/dev/shm/$instance.sh
