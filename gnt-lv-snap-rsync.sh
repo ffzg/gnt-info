@@ -3,12 +3,16 @@
 instance=$1
 disk=$2
 
-if [ -z "$instance" -o -z "$disk" ] ; then
+if [ "$1" = '-' ] ; then
+	read instance disk
+elif [ -z "$instance" -o -z "$disk" ] ; then
 	echo "Usage: $0 instance disk"
 	exit 1
 fi
 
-instance=`gnt-instance list --no-headers -o name $instance`
+test -z "$instance" && exit 1
+
+instance=`gnt-instance list --no-headers -o name $instance | head -1`
 
 node=`gnt-instance list -o pnode --no-headers $instance`
 echo "# $instance on $node"
