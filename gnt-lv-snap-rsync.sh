@@ -14,7 +14,7 @@ ssh $node lvs -o name,tags | grep $instance | tee /dev/shm/$instace.$node.lvs | 
 cat <<__SHELL__ | tee /dev/shm/$instance.sh
 	lvcreate -L20480m -s -n$lv.snap /dev/ffzgvg/$lv
 	mkdir /dev/shm/$lv.snap
-	mount /dev/ffzgvg/$lv.snap /dev/shm/$lv.snap
+	mount /dev/ffzgvg/$lv.snap /dev/shm/$lv.snap -o ro
 	rsync -ravHz --numeric-ids --sparse --delete /dev/shm/$lv.snap/ lib15::backup/$instance/$disk_nr/
 	umount /dev/shm/$lv.snap
 	lvremove -f /dev/ffzgvg/$lv.snap
