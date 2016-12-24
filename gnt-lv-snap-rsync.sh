@@ -21,11 +21,13 @@ ssh $node lvs -o name,tags | grep $instance | tee /dev/shm/$instace.$node.lvs | 
 	disk_nr=`echo $lv | cut -d. -f2 | tr -d a-z_`
 	echo "# $lv | $origin | $disk_nr"
 
-cat <<__SHELL__ | tee /dev/shm/$instance.sh
+cat <<__SHELL__ > /dev/shm/$instance.sh
 
 	lvcreate -L20480m -s -n$lv.snap /dev/ffzgvg/$lv
 
 	mkdir /dev/shm/$lv.snap
+
+	sleep 1
 
 	# we must mount filesystem read-write to allow journal recovery
 	mount /dev/ffzgvg/$lv.snap /dev/shm/$lv.snap -o noatime \
@@ -39,6 +41,7 @@ cat <<__SHELL__ | tee /dev/shm/$instance.sh
 	lvremove -f /dev/ffzgvg/$lv.snap
 
 	rmdir /dev/shm/$lv.snap
+	rm -v /dev/shm/$instance.sh
 __SHELL__
 
 	scp /dev/shm/$instance.sh $node:/dev/shm/$instance.sh
