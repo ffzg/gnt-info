@@ -32,7 +32,7 @@ cat <<__SHELL__ > /dev/shm/$instance.sh
 	test ! -z "\$offset" && offset=",offset=\$offset"
 	mount /dev/ffzgvg/$lv.snap /dev/shm/$lv.snap -o noatime\$offset
 
-	rsync -ravHz --numeric-ids --sparse --delete /dev/shm/$lv.snap/ lib15::backup/$instance/$disk_nr/
+	rsync -ravHz --inplace --numeric-ids --delete /dev/shm/$lv.snap/ lib15::backup/$instance/$disk_nr/
 
 	umount /dev/shm/$lv.snap
 
