@@ -3,7 +3,7 @@ use warnings;
 use strict;
 use autodie;
 use POSIX;
-use Time::HiRes qw(time);
+use Time::HiRes qw(time sleep);
 
 my $DEBUG = $ENV{DEBUG} || 0;
 my $INFLUX = $ENV{INFLUX} || 'http://10.80.3.89:8086/write?db=gnt';
@@ -29,6 +29,9 @@ my $last;
 while(1) {
 
 my $skip;
+
+my $begin_t = time();
+my $t = int( time() * 1000_000_000 );
 
 foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/pid/*' ) {
 
@@ -162,8 +165,6 @@ sub dump4influx {
 
 open(my $fh, '>', '/dev/shm/gnt-monitor.influx');
 
-my $t = int( time() * 1000_000_000 );
-
 foreach my $instance ( keys %$stat ) {
 
 	next if $skip->{$instance};
@@ -189,6 +190,6 @@ if ( system( 'curl', '-XPOST', $INFLUX, '--data-binary', '@/dev/shm/gnt-monitor.
 	warn "curl failed: $? $!";
 }
 
-sleep $INTERVAL;
+sleep $INTERVAL - (time() - $begin_t);
 } #/while
 
