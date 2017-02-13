@@ -3,6 +3,7 @@ use warnings;
 use strict;
 use autodie;
 use POSIX;
+use Time::HiRes qw(time);
 
 my $DEBUG = $ENV{DEBUG} || 0;
 my $INFLUX = $ENV{INFLUX} || 'http://10.80.3.89:8086/write?db=gnt';
@@ -161,19 +162,21 @@ sub dump4influx {
 
 open(my $fh, '>', '/dev/shm/gnt-monitor.influx');
 
+my $t = time() * 1000_000_000;
+
 foreach my $instance ( keys %$stat ) {
 
 	next if $skip->{$instance};
 
-	print $fh qq{cpu,node=$node,instance=$instance$location cpu=$stat->{$instance}->{cpu},ticks=$stat->{$instance}->{ticks}\n};
+	print $fh qq{cpu,node=$node,instance=$instance$location cpu=$stat->{$instance}->{cpu},ticks=$stat->{$instance}->{ticks} $t\n};
 
 	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
-		print $fh qq{disk,node=$node,instance=$instance$location },dump4influx( $disk ), "\n";
+		print $fh qq{disk,node=$node,instance=$instance$location },dump4influx( $disk ), " $t\n";
 	}
 
 	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
 		my $vlan = delete $nic->{vlan};
-		print $fh qq{nic,node=$node,instance=$instance,vlan=${vlan}$location },dump4influx( $nic ), "\n";
+		print $fh qq{nic,node=$node,instance=$instance,vlan=${vlan}$location },dump4influx( $nic ), " $t\n";
 	}
 
 }
