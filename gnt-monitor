@@ -162,7 +162,7 @@ sub dump4influx {
 
 open(my $fh, '>', '/dev/shm/gnt-monitor.influx');
 
-my $t = time() * 1000_000_000;
+my $t = int( time() * 1000_000_000 );
 
 foreach my $instance ( keys %$stat ) {
 
