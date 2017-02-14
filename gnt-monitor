@@ -64,9 +64,9 @@ foreach my $instance ( glob '/var/run/ganeti/kvm-hypervisor/pid/*' ) {
 	if ( my $last_gtime = $last->{$instance}->{gtime} ) {
 		my $clock_ticks = POSIX::sysconf( &POSIX::_SC_CLK_TCK ); # clock ticks per second
 
-		my $cpu = ( ( $gtime - $last_gtime ) * 100 ) / ( $clock_ticks * $vcpu );
+		my $cpu = ( ( $gtime - $last_gtime ) * 100 ) / ( $clock_ticks * $vcpu ) / $INTERVAL;
 		$stat->{$instance}->{cpu} = $cpu;
-		$stat->{$instance}->{ticks} = $gtime - $last_gtime;
+		$stat->{$instance}->{ticks} = ($gtime - $last_gtime) / $INTERVAL;
 	}
 
 	$last->{$instance}->{gtime} = $gtime;
@@ -93,12 +93,12 @@ foreach my $glob ( glob '/var/run/ganeti/instance-disks/*' ) {
 	my @s = split(/\s+/, $v );
 	# https://www.kernel.org/doc/Documentation/block/stat.txt
 	my $d = {
-		read_io => $s[0],
-		read_bytes => $s[2] * 512,
-		read_wait => $s[3],
-		write_io => $s[4],
-		write_bytes => $s[6] * 512,
-		write_wait => $s[7],
+		read_io => $s[0] / $INTERVAL,
+		read_bytes => $s[2] * 512 / $INTERVAL,
+		read_wait => $s[3] / $INTERVAL,
+		write_io => $s[4] / $INTERVAL,
+		write_bytes => $s[6] * 512 / $INTERVAL,
+		write_wait => $s[7] / $INTERVAL,
 	};
 	if ( my $l = $last->{$instance}->{disk}->[$disk] ) {
 		my $delta;
@@ -129,7 +129,7 @@ foreach my $full_instance ( glob '/var/run/ganeti/kvm-hypervisor/nic/*' ) {
 		foreach my $f (qw( rx_bytes tx_bytes rx_packets tx_packets )) {
 			open( my $fh, '<', "/sys/class/net/$dev/statistics/$f" );
 			my $v = <$fh>; chomp $v;
-			$d->{$f} = $v;
+			$d->{$f} = $v / $INTERVAL;
 		}
 		if ( my $l = $last->{$instance}->{nic}->[$nic] ) {
 			$stat->{$instance}->{nic}->[$nic]->{$_} = $d->{$_} - $l->{$_} foreach keys %$d;
@@ -153,9 +153,8 @@ sub dump4influx {
 	my @v;
 	foreach my $k ( keys %$hash ) {
 		my $v = $hash->{$k};
-		my ( $d, $s ) = $v =~ m/^\d+$/ ? ( '',  'i' ) :
-				$v =~ m/\w+/   ? ( '"', ''  ) :
-                                                 ( '' , ''  ) ; # float
+		my ( $d, $s ) = $v =~ m/^\d+(\.\d+)?$/i ? ( '',  ''  ) : # float
+                                                     ( '"' ,''  ) ; # string
 
 		push @v, "$k=$d$v$d$s";
 	}
