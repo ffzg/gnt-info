@@ -236,4 +236,4 @@ foreach my $i ( 0 .. $#{ $lines->{line} } ) {
 
 store $lines->{line}, '/dev/shm/ganeti.last.storable';
 
-system "curl -i -XPOST 'http://127.0.0.1:8186/write?db=ganeti' --data-binary '@/dev/shm/ganeti.influx'";
+#system "curl -i -XPOST 'http://127.0.0.1:8186/write?db=ganeti' --data-binary '@/dev/shm/ganeti.influx'";
