@@ -168,15 +168,15 @@ foreach my $instance ( keys %$stat ) {
 
 	next if $skip->{$instance};
 
-	print $fh qq{cpu,node=$node,instance=$instance$location cpu=$stat->{$instance}->{cpu},ticks=$stat->{$instance}->{ticks} $t\n};
+	print $fh qq{ganeti_cpu,node=$node,instance=$instance$location cpu=$stat->{$instance}->{cpu},ticks=$stat->{$instance}->{ticks} $t\n};
 
 	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
-		print $fh qq{disk,node=$node,instance=$instance$location },dump4influx( $disk ), " $t\n";
+		print $fh qq{ganeti_disk,node=$node,instance=$instance$location },dump4influx( $disk ), " $t\n";
 	}
 
 	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
 		my $vlan = delete $nic->{vlan};
-		print $fh qq{nic,node=$node,instance=$instance,vlan=${vlan}$location },dump4influx( $nic ), " $t\n";
+		print $fh qq{ganeti_nic,node=$node,instance=$instance,vlan=${vlan}$location },dump4influx( $nic ), " $t\n";
 	}
 
 }
@@ -189,6 +189,7 @@ if ( system( 'curl', '-XPOST', $INFLUX, '--data-binary', '@/dev/shm/gnt-monitor.
 	warn "curl failed: $? $!";
 }
 
-sleep $INTERVAL - (time() - $begin_t);
+my $dt = time() - $begin_t;
+sleep $INTERVAL - $dt if $dt > $INTERVAL;
 } #/while
 
