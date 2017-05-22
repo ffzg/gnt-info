@@ -190,6 +190,6 @@ if ( system( 'curl', '-XPOST', $INFLUX, '--data-binary', '@/dev/shm/gnt-monitor.
 }
 
 my $dt = time() - $begin_t;
-sleep $INTERVAL - $dt if $dt > $INTERVAL;
+sleep $INTERVAL - $dt if $dt > 0 && $dt > $INTERVAL;
 } #/while
 
