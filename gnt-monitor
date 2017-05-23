@@ -176,6 +176,7 @@ foreach my $instance ( keys %$stat ) {
 
 	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
 		my $vlan = delete $nic->{vlan};
+		$vlan = 0 unless defined $vlan;
 		print $fh qq{ganeti_nic,node=$node,instance=$instance,vlan=${vlan}$location },dump4influx( $nic ), " $t\n";
 	}
 
