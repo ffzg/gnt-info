@@ -2,6 +2,7 @@
 
 instance=$1
 disk=$2
+test -z "$backup" && backup="backup"
 
 if [ "$1" = '-' ] ; then
 	read instance disk
@@ -32,7 +33,7 @@ cat <<__SHELL__ > /dev/shm/$instance.sh
 	test ! -z "\$offset" && offset=",offset=\$offset"
 	mount /dev/ffzgvg/$lv.snap /dev/shm/$lv.snap -o noatime\$offset
 
-	rsync -ravHzXA --inplace --numeric-ids --delete /dev/shm/$lv.snap/ lib15::backup/$instance/$disk_nr/
+	rsync -ravHzXA --inplace --numeric-ids --delete /dev/shm/$lv.snap/ lib15::$backup/$instance/$disk_nr/
 
 	umount /dev/shm/$lv.snap
 
@@ -47,7 +48,7 @@ __SHELL__
 	ssh $node sh -xe /dev/shm/$instance.sh
 
 	date=`date +%Y-%m-%d`
-	ssh lib15 zfs snap lib15/backup/$instance/$disk_nr@$date
+	ssh lib15 zfs snap lib15/$backup/$instance/$disk_nr@$date
 done
 
 
