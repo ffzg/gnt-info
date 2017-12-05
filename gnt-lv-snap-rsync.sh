@@ -24,6 +24,11 @@ ssh $node lvs -o name,tags | grep $instance | tee /dev/shm/$instace.$node.lvs | 
 	disk_nr=`echo $lv | cut -d. -f2 | tr -d a-z_`
 	echo "# $lv | $origin | $disk_nr"
 
+	rsync_args=""
+	if rsync lib15::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args ; then
+		rsync_args="`cat /dev/shm/$instance-rsync.args`"
+	fi
+
 cat <<__SHELL__ > /dev/shm/$instance.sh
 
 	lvcreate -L20480m -s -n$lv.snap /dev/$vg/$lv
@@ -35,7 +40,7 @@ cat <<__SHELL__ > /dev/shm/$instance.sh
 	test ! -z "\$offset" && offset=",offset=\$offset"
 	mount /dev/$vg/$lv.snap /dev/shm/$lv.snap -o noatime\$offset
 
-	rsync -ravHzXA --inplace --numeric-ids --delete /dev/shm/$lv.snap/ lib15::$backup/$instance/$disk_nr/
+	rsync -ravHzXA --inplace --numeric-ids --delete $rsync_args /dev/shm/$lv.snap/ lib15::$backup/$instance/$disk_nr/
 
 	umount /dev/shm/$lv.snap
 
