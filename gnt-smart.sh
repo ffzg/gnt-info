@@ -1,3 +1,5 @@
 #!/bin/sh -e
 
-ls /dev/sd? | xargs -i sh -ec 'echo -n "{}\t" ; smartctl -l selftest {} | grep "^# 1"'
+cp /srv/gnt-info/smart-megaraid.sh /tmp/
+gnt-cluster copyfile /tmp/smart-megaraid.sh
+gnt-cluster command -M /tmp/smart-megaraid.sh
