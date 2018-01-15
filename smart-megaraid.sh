@@ -7,7 +7,10 @@
 pattern='(^# [1-2]|test remaining|Hours|Error|Serial|Model|Firmware)'
 test ! -z "$1" && pattern=$*
 
+did_megaraid=0
+
 megaraid() {
+	test $did_megaraid -eq 1 && return
 	drive=$1
 	nr=0
 	while [ $nr -lt 8 ] ; do
@@ -15,6 +18,7 @@ megaraid() {
 		smartctl -d megaraid,$nr -a /dev/$drive > /dev/shm/smart.$drive.$nr
 		nr=`expr $nr + 1`
 	done
+	did_megaraid=1
 }
 
 test -r /proc/mdstat && cat /proc/mdstat
