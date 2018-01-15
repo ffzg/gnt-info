@@ -27,6 +27,6 @@ lsblk --noheadings --scsi -o name | while read drive ; do
 	fi
 done
 
-grep "$pattern" /dev/shm/smart.* | cut -d. -f2- | sed -e 's/:/\t/'
+grep "$pattern" /dev/shm/smart.*		| cut -d. -f2- | sed -e 's/:/\t/'
 
-
+grep 'test remaining' /dev/shm/smart.*		| sort | cut -d. -f2- | sed -e 's/:/\t/'
