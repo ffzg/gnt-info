@@ -11,5 +11,5 @@ __SOURCES__
 	apt-get install megacli
 fi
 
-megacli -FwTermLog Dsply -aALL | tee /dev/shm/megacli.FwTermLog | egrep -v '(Sense|IllegalReq|pRdm)'
+megacli -FwTermLog Dsply -aALL | tee /dev/shm/megacli.FwTermLog | egrep -v '(Sense|IllegalReq|Rdm|Unknown DCDB Opcode)'
 
