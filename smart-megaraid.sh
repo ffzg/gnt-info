@@ -26,7 +26,7 @@ test -r /proc/mdstat && cat /proc/mdstat
 lsblk --noheadings --scsi -o name | while read drive ; do
 	test ! -z "$SMART" && smartctl $SMART /dev/$drive > /dev/shm/smart.$drive-out
 	smartctl -a /dev/$drive > /dev/shm/smart.$drive
-	if ! grep -q '^# 1' /dev/shm/smart.$drive ; then
+	if egrep -q '(PERC|MegaRaid/DELL)' /dev/shm/smart.$drive ; then
 		megaraid $drive
 	fi
 done
