@@ -220,7 +220,7 @@ foreach my $i ( 0 .. $#{ $lines->{line} } ) {
 	next unless $last_lines;
 
 	my $last_line = $last_lines->[$i];
-	my @c = ( 'host', ps_cols_visible );
+	my @c = ( 'instance', ps_cols_visible );
 	my @influx;
 	foreach my $j ( 0 .. $#$line ) {
 		#push @influx, $c[$j] . '=' . $line->[$j];
