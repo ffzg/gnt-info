@@ -11,5 +11,5 @@ root@r1u30:/home/dpavlin# gnt-cluster command apt-get install -y snf-image
 Now modify win7x64vm machine to perform full disk backup
 
 gnt-instance modify --os-type snf-image+default win7x64vm
-gnt-instance modify --os-parameters=img_format=diskdump,img_id=null win7x64vm
-gnt-backup export --noshutdown -n r1u30 win7x64vm
+gnt-instance modify --os-parameters=img_format=diskdump,img_id=windows7,img_properties='{"OSFAMILY":"windows"}' win7x64vm
+gnt-backup export --noshutdown -n r1u32 win7x64vm
