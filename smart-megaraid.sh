@@ -4,7 +4,7 @@
 # smart-megaraid.sh '^# 1'		# default without args
 # SMART="-t long" smart-megaraid.sh	# execute smart command
 
-pattern='(^# [1-2]|test remaining|Hours|Error|Serial|Model|Firmware)'
+pattern='(^# [1-2]|test remaining|Hours|Error|Serial|Model|Firmware|Load)'
 test ! -z "$1" && pattern=$*
 
 did_megaraid=0
