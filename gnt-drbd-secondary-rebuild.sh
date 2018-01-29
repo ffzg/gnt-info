@@ -3,7 +3,7 @@
 test -z "$1" && echo "Usage: $0 node" && exit 1
 node=$1
 
-gnt-node list-drbd --no-headers $node | grep secondary | awk '{ print $3 }' | while read instance ; do
+gnt-node list-drbd --no-headers $node | grep secondary | awk '{ print $3 }' | sort -u | while read instance ; do
 	echo "## $instance";
 	gnt-instance stop $instance
 	gnt-instance modify -t plain $instance
