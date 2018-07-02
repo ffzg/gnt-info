@@ -1,0 +1,30 @@
+It's hard to edit partition table in virtual machine when host thinks that sectors are 4k
+and vm thinks they are 512 bytes. fdisk --sector-size 512 doesn't seem to work, so only
+solution is to boot something inside vm to produce original hardware configuration.
+
+
+cd /boot
+
+wget http://download.grml.org/grml96-small_2017.05.iso
+
+root@r1u28:/home/dpavlin# gnt-cluster copyfile /boot/grml96-small_2017.05.iso
+
+# force boot from cdrom
+
+root@r1u28:/home/dpavlin# gnt-instance modify -H kernel_path=,initrd_path=,boot_order=cdrom,cdrom_image_path=/boot/grml96-small_2017.05.iso armbian
+
+
+# reboot, connect with vnc and fix system
+root@r1u28:/home/dpavlin# gnt-instance reboot armbian
+
+root@r1u28:/home/dpavlin# /srv/gnt-info/gnt-vnc.sh armbian
+ssh -L 11032:127.0.0.1:11032 r1u30.gnt.ffzg.hr
+vncviewer localhost:5132
+
+
+# remove cdrom, restore boot from disk
+root@r1u28:/home/dpavlin# gnt-instance modify -H kernel_path=,initrd_path=,boot_order=disk,cdrom_image_path= armbian
+
+# restore kernel
+root@r1u28:/home/dpavlin# gnt-instance modify -H initrd_path=/boot/initrd.img-4.9.0-0.bpo.6-amd64,kernel_path=/boot/vmlinuz-4.9.0-0.bpo.6-amd64 armbian
+
