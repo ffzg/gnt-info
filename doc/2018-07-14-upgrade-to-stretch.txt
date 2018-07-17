@@ -1,4 +1,4 @@
-2018-07-14 upgrade to stretch
+# 2018-07-14 upgrade to stretch
 
 Errors after upgrade:
 
@@ -13,6 +13,7 @@ Sat Jul 14 20:20:15 2018   - ERROR: instance odin.ffzg.hr: couldn't retrieve sta
 Sat Jul 14 20:20:15 2018   - ERROR: instance gray: couldn't retrieve status for disk/0 on r1u28.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
 Sat Jul 14 20:20:15 2018   - ERROR: instance video: instance not running on its primary node r1u28.gnt.ffzg.hr
 
+## rbd -p problem
 
 known issue with option -p: https://github.com/ganeti/ganeti/issues/1233
 
@@ -55,7 +56,7 @@ Sat Jul 14 20:35:16 2018 * Hooks Results
 
 
 
-# qemu rbd fix
+## qemu rbd fix
 
 root@r1u28:~# gnt-ill video
 Instance Status     VCPUs Memory DiskUsage Disk_template Disks Primary_node      Secondary_Nodes
@@ -91,4 +92,94 @@ odin.ffzg.hr           running        2   512M    253.0G rbd               2 r1u
 syslog                 running        2   512M    100.0G rbd               1 r1u32.gnt.ffzg.hr 
 video                  running        4   2.0G    110.0G rbd               2 r1u28.gnt.ffzg.hr 
 
+
+#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# 2018-07-17 problems when creating rbd instance
+
+root@r1u28:/srv/gnt-info# gnt-instance add -t rbd -s 8g -B vcpus=8,minmem=8G,maxmem=8G --no-ip-check --no-name-check -o debootstrap+default docker1
+Tue Jul 17 15:09:43 2018  - INFO: Selected nodes for instance docker1 via iallocator hail: r1u32.gnt.ffzg.hr
+Tue Jul 17 15:09:44 2018 * disk 0, size 8.0G
+Tue Jul 17 15:09:44 2018 * creating instance disks...
+Tue Jul 17 15:09:45 2018  - WARNING: Device creation failed
+Failure: command execution error:
+Can't create block device <Disk(type=rbd, logical_id=('rbd', '0d32cc93-5c42-400c-a27f-90de928ccb80.rbd.disk0'), children=None, visible as /dev/disk/0, size=8192m)> on node r1u32.gnt.ffzg.hr for instance docker1: Can't create block device: rbd map failed (exited with exit code 6): RBD image feature set mismatch. You can disable features unsupported by the kernel with "rbd feature disable".
+In some cases useful info is found in syslog - try "dmesg | tail" or so.
+rbd: sysfs write failed
+rbd: map failed: (6) No such device or address
+
+
+more info: http://lists.ceph.com/pipermail/ceph-users-ceph.com/2017-February/016554.html
+
+
+root@r1u28:/srv/gnt-info# ceph -v
+ceph version 10.2.5 (c461ee19ecbc0c5c330aca20f7392c9a00730367)
+
+root@r1u32:~# ceph -v
+ceph version 10.2.5 (c461ee19ecbc0c5c330aca20f7392c9a00730367)
+
+root@r1u32:~# dmesg | grep unsup
+
+[232021.291731] rbd: image ed02c9cf-b443-4864-b447-30ef32a64689.rbd.disk0: image uses unsupported features: 0x38
+[232592.881965] rbd: image 0d32cc93-5c42-400c-a27f-90de928ccb80.rbd.disk0: image uses unsupported features: 0x38
+root@r1u32:~# rbd info ed02c9cf-b443-4864-b447-30ef32a64689.rbd.disk0
+rbd image 'ed02c9cf-b443-4864-b447-30ef32a64689.rbd.disk0':
+        size 8192 MB in 2048 objects
+        order 22 (4096 kB objects)
+        block_name_prefix: rbd_data.3d78c92ae8944a
+        format: 2
+        features: layering, exclusive-lock, object-map, fast-diff, deep-flatten
+        flags: 
+root@r1u32:~# rbd info 0d32cc93-5c42-400c-a27f-90de928ccb80.rbd.disk0
+rbd image '0d32cc93-5c42-400c-a27f-90de928ccb80.rbd.disk0':
+        size 8192 MB in 2048 objects
+        order 22 (4096 kB objects)
+        block_name_prefix: rbd_data.3d79d1238e1f29
+        format: 2
+        features: layering, exclusive-lock, object-map, fast-diff, deep-flatten
+        flags: 
+
+root@r1u32:~# rbd feature disable ed02c9cf-b443-4864-b447-30ef32a64689.rbd.disk0 exclusive-lock,object-map,fast-diff,deep-flatten
+2018-07-17 15:27:14.200376 7f08a554c700 -1 librbd::object_map::RefreshRequest: failed to load object map: rbd_object_map.3d78c92ae8944a
+2018-07-17 15:27:14.200628 7f08a554c700 -1 librbd::object_map::InvalidateRequest: 0x7f088c00d920 invalidating object map in-memory
+2018-07-17 15:27:14.200657 7f08a4d4b700 -1 librbd::object_map::InvalidateRequest: 0x7f088c00d920 should_complete: r=0
+2018-07-17 15:27:14.234047 7f08c33b8100 -1 librbd: failed to update features: (22) Invalid argument
+rbd: failed to update image features: (22) Invalid argument
+
+
+# ocke, try to select just layering as default feature for ceph
+
+
+root@r1u32:/etc# git diff
+diff --git a/ceph/ceph.conf b/ceph/ceph.conf
+index d977708..116d243 100644
+--- a/ceph/ceph.conf
++++ b/ceph/ceph.conf
+@@ -7,6 +7,7 @@
+   auth_client_required = cephx
+   setuser match path = /var/lib/ceph/$type/$cluster-$id
+   rbd default format = 2
++  rbd default features = 3
+
+ [osd]
+   osd journal size = 512
+
+# copy this modification to all nodes
+
+root@r1u28:/srv/gnt-info# gnt-cluster copyfile /etc/ceph/ceph.conf
+
+# test to see that it works
+
+root@r1u28:/srv/gnt-info# gnt-instance add -t rbd -s 8g -B vcpus=8,minmem=8G,maxmem=8G --no-ip-check --no-name-check -o debootstrap+default docker1
+Tue Jul 17 15:31:55 2018  - INFO: Selected nodes for instance docker1 via iallocator hail: r1u32.gnt.ffzg.hr
+Tue Jul 17 15:31:56 2018 * disk 0, size 8.0G
+Tue Jul 17 15:31:56 2018 * creating instance disks...
+Tue Jul 17 15:31:56 2018 adding instance docker1 to cluster config
+Tue Jul 17 15:31:56 2018 adding disks to cluster config
+Tue Jul 17 15:31:57 2018  - INFO: Waiting for instance docker1 to sync disks
+Tue Jul 17 15:31:57 2018  - INFO: Instance docker1's disks are in sync
+Tue Jul 17 15:31:57 2018  - INFO: Waiting for instance docker1 to sync disks
+Tue Jul 17 15:31:57 2018  - INFO: Instance docker1's disks are in sync
+Tue Jul 17 15:31:57 2018 * running the instance OS create scripts...
+Tue Jul 17 15:32:17 2018 * starting instance...
 
