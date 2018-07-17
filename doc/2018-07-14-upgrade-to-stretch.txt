@@ -1,0 +1,94 @@
+2018-07-14 upgrade to stretch
+
+Errors after upgrade:
+
+root@r1u28:~# gnt-cluster verify
+Sat Jul 14 20:20:15 2018   - ERROR: instance syslog: couldn't retrieve status for disk/0 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance mudrac: couldn't retrieve status for disk/0 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance mudrac: couldn't retrieve status for disk/1 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance mudrac: couldn't retrieve status for disk/2 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance mudrac: couldn't retrieve status for disk/3 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance odin.ffzg.hr: couldn't retrieve status for disk/0 on r1u28.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance odin.ffzg.hr: couldn't retrieve status for disk/1 on r1u28.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance gray: couldn't retrieve status for disk/0 on r1u28.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Sat Jul 14 20:20:15 2018   - ERROR: instance video: instance not running on its primary node r1u28.gnt.ffzg.hr
+
+
+known issue with option -p: https://github.com/ganeti/ganeti/issues/1233
+
+better version of fix on: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=850823
+
+
+root@r1u28:~# vi /usr/share/ganeti/2.15/ganeti/storage/bdev.py
+
+root@r1u28:~# gnt-cluster copyfile /usr/share/ganeti/2.15/ganeti/storage/bdev.py
+
+root@r1u28:~# /etc/init.d/ganeti restart
+Restarting ganeti (via systemctl): ganeti.service.
+root@r1u28:~# ssh r1u30 /etc/init.d/ganeti restart
+Restarting ganeti (via systemctl): ganeti.service.
+root@r1u28:~# ssh r1u32 /etc/init.d/ganeti restart
+Restarting ganeti (via systemctl): ganeti.service.
+
+root@r1u28:~# gnt-cluster verify
+Submitted jobs 268767, 268768
+Waiting for job 268767 ...
+Sat Jul 14 20:35:09 2018 * Verifying cluster config
+Sat Jul 14 20:35:09 2018 * Verifying cluster certificate files
+Sat Jul 14 20:35:09 2018 * Verifying hypervisor parameters
+Sat Jul 14 20:35:09 2018 * Verifying all nodes belong to an existing group
+Waiting for job 268768 ...
+Sat Jul 14 20:35:10 2018 * Verifying group 'default'
+Sat Jul 14 20:35:10 2018 * Gathering data (3 nodes)
+Sat Jul 14 20:35:11 2018 * Gathering information about nodes (3 nodes)
+Sat Jul 14 20:35:13 2018 * Gathering disk information (3 nodes)
+Sat Jul 14 20:35:16 2018 * Verifying configuration file consistency
+Sat Jul 14 20:35:16 2018 * Verifying node status
+Sat Jul 14 20:35:16 2018   - ERROR: cluster: ghost disk '6a41d54a-ab7c-4b99-a99e-529f925135e4' in temporary DRBD map
+Sat Jul 14 20:35:16 2018   - ERROR: cluster: ghost disk '6a41d54a-ab7c-4b99-a99e-529f925135e4' in temporary DRBD map
+Sat Jul 14 20:35:16 2018 * Verifying instance status
+Sat Jul 14 20:35:16 2018   - ERROR: instance video: instance not running on its primary node r1u28.gnt.ffzg.hr
+Sat Jul 14 20:35:16 2018 * Verifying orphan volumes
+Sat Jul 14 20:35:16 2018 * Verifying N+1 Memory redundancy
+Sat Jul 14 20:35:16 2018 * Other Notes
+Sat Jul 14 20:35:16 2018 * Hooks Results
+
+
+
+# qemu rbd fix
+
+root@r1u28:~# gnt-ill video
+Instance Status     VCPUs Memory DiskUsage Disk_template Disks Primary_node      Secondary_Nodes
+video    ERROR_down     -      -    110.0G rbd               2 r1u28.gnt.ffzg.hr
+root@r1u28:~# gnt-instance start video
+Waiting for job 268771 for video ...
+Job 268771 for video has failed: Failure: command execution error:
+Could not start instance 'video': Hypervisor error: Failed to start instance video: exited with exit code 1 (qemu-system-x86_64: -drive file=rbd:rbd/7cda803e-f877-4001-b9ce-9d460e3f85b8.rbd.disk0,format=raw,if=none,cache=none,id=hotdisk-39dd05de-pci-4,bus=0,unit=4: Unknown protocol 'rbd'
+
+
+https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=839899
+
+root@r1u28:~# apt-get install qemu-block-extra
+root@r1u28:~# gnt-instance start video
+Waiting for job 268773 for video ...
+root@r1u28:~# gnt-ill video
+Instance Status  VCPUs Memory DiskUsage Disk_template Disks Primary_node      Secondary_Nodes
+video    running     4   2.0G    110.0G rbd               2 r1u28.gnt.ffzg.hr 
+
+
+Fix whole cluster and test
+
+root@r1u28:~# gnt-cluster command apt-get install -y qemu-block-extra
+
+# test
+root@r1u28:~# gnt-instance reboot video
+root@r1u28:~# gnt-instance reboot gray
+
+root@r1u28:~# gnt-ill  | grep ' rbd '
+gray                   running        6   6.0G    100.0G rbd               1 r1u28.gnt.ffzg.hr 
+mudrac                 running        4   4.0G      2.9T rbd               4 r1u32.gnt.ffzg.hr 
+odin.ffzg.hr           running        2   512M    253.0G rbd               2 r1u28.gnt.ffzg.hr 
+syslog                 running        2   512M    100.0G rbd               1 r1u32.gnt.ffzg.hr 
+video                  running        4   2.0G    110.0G rbd               2 r1u28.gnt.ffzg.hr 
+
+
