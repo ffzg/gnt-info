@@ -13,10 +13,10 @@ while(<$in>) {
 	$mac2ip_vlan->{$mac} = [ $ip, $vlan ];
 }
 
-open(my $gnt, '-|', qq{gnt-instance list --no-header --separator=' ' -o name,nic.macs,nic.bridges});
+open(my $gnt, '-|', qq{gnt-instance list --no-header --separator=' ' -o name,nic.macs,nic.bridges,tags});
 while(<$gnt>) {
 	chomp;
-	my ( $name,$macs,$bridges ) = split(/\s/,$_);
+	my ( $name,$macs,$bridges,$tags ) = split(/\s/,$_,4);
 	my @macs = split(/,/,$macs);
 	my @br  = split(/,/,$bridges);
 	for my $i ( 0 .. $#macs ) {
@@ -27,6 +27,8 @@ while(<$gnt>) {
 		} else {
 			print "? ?";
 		}
-		print "\n";
+		$tags =~ s/ganeti:watcher[^,]*,*//g;
+		$tags =~ s/ganetimgr://g;
+		print " $tags\n";
 	}
 }
