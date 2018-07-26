@@ -1,0 +1,76 @@
+# safeq disk failure
+
+## Windows 2003 server which has failed disk
+# https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.96/
+
+# boots!
+kvm -machine pc-i440fx-2.1  -usb -usbdevice tablet -display none -smp 4 -m 2048 -hda /dev/ffzgvg/safeq-disk-0 -cdrom /home/dpavlin/virtio-win-0.1.96.iso -vnc 10.60.0.206:1 
+
+gnt-instance add -B maxmem=2G,vcpus=4 -t plain -n lib30 \
+-o snf-image+default --os-parameters=img_format=diskdump,img_id=windows2k3,img_properties='{"OSFAMILY":"windows"}' \
+--disk 0:adopt=safeq-disk-0 \
+--net 0:link=br0062 \
+--no-name-check --no-ip-check --no-start safeq
+
+root@lib30:/srv/gnt-info# gnt-instance add -B maxmem=2G,vcpus=4 -t plain -n lib30 -o snf-image+default --os-parameters=img_format=diskdump,img_id=windows2k3,img_properties='{"OSFAMILY":"windows"}' --disk 0:adopt=safeq --net 0:link=br0062 --no-name-check --no-ip-check --no-start safeq
+
+
+root@lib30:/srv/gnt-info# gnt-instance modify -t drbd -n lib28 safeq
+
+root@lib30:/srv/gnt-info# gnt-instance modify -H vnc_bind_address=127.0.0.1,kernel_path=,initrd_path= safeq
+
+root@lib30:/srv/gnt-info# gnt-instance start safeq
+
+# check kvm params
+
+root@lib30:/srv/gnt-info# ps ax | grep safeq
+42323 pts/14   S+     0:02 vi doc/safeq-windows-2003-import.txt
+43301 ?        Sl     0:34 qemu-system-x86_64 -enable-kvm -cpu host,-kvm_steal_time -name safeq -m 2048 -smp 4 -pidfile /var/run/ganeti/kvm-hypervisor/pid/safeq -balloon virtio,id=balloon,bus=pci.0,addr=0x3 -daemonize -machine pc-i440fx-2.8 -monitor unix:/var/run/ganeti/kvm-hypervisor/ctrl/safeq.monitor,server,nowait -serial unix:/var/run/ganeti/kvm-hypervisor/ctrl/safeq.serial,server,nowait -usb -usbdevice tablet -vnc 127.0.0.1:5123 -uuid a9c1315d-66c0-4563-8134-95a8cc059249 -netdev type=tap,id=hotnic-4d9b36db-pci-5,fd=9 -device virtio-net-pci,mac=aa:00:00:43:ba:68,id=hotnic-4d9b36db-pci-5,bus=pci.0,addr=0x5,netdev=hotnic-4d9b36db-pci-5 -qmp unix:/var/run/ganeti/kvm-hypervisor/ctrl/safeq.qmp,server,nowait -qmp unix:/var/run/ganeti/kvm-hypervisor/ctrl/safeq.kvmd,server,nowait -boot c -device virtio-blk-pci,drive=hotdisk-a7242b40-pci-4,id=hotdisk-a7242b40-pci-4,bus=pci.0,addr=0x4 -drive file=/var/run/ganeti/instance-disks/safeq:0,format=raw,if=none,id=hotdisk-a7242b40-pci-4,bus=0,unit=4 -S -runas gnt23
+
+root@lib30:/srv/gnt-info# kill 43301
+
+root@lib30:/srv/gnt-info# gnt-instance activate-disks safeq
+lib30.gnt.ffzg.hr:disk/0:/dev/drbd41
+
+
+
+# reload with virt drivers and install them
+
+root@lib30:/var/lib/ganeti# dd if=/dev/zero of=/tmp/disk.raw bs=1M count=100
+100+0 records in
+100+0 records out
+104857600 bytes (105 MB, 100 MiB) copied, 0.0919013 s, 1.1 GB/s
+
+kvm -machine pc-i440fx-2.8  -usb -usbdevice tablet -display none -smp 4 -m 2048 -hda /dev/drbd41 -cdrom /home/dpavlin/virtio-win-0.1.96.iso -vnc 10.60.0.206:1 -uuid a9c1315d-66c0-4563-8134-95a8cc059249 -netdev type=tap,id=hotnic-4d9b36db-pci-5,fd=9 -device virtio-net-pci,mac=aa:00:00:43:ba:68,id=hotnic-4d9b36db-pci-5,bus=pci.0,addr=0x5,netdev=hotnic-4d9b36db-pci-5 -device virtio-blk-pci,drive=hotdisk-a7242b40-pci-4,id=hotdisk-a7242b40-pci-4,bus=pci.0,addr=0x4 -drive file=/tmp/disk.raw,format=raw,if=none,id=hotdisk-a7242b40-pci-4,bus=0,unit=4
+
+
+root@lib30:/srv/gnt-info# gnt-cluster copyfile /home/dpavlin/virtio-win-0.1.96.iso 
+
+root@lib30:/srv/gnt-info# gnt-instance modify -H cdrom_image_path=,cdrom2_image_path=/home/dpavlin/virtio-win-0.1.96.iso safeq
+
+# cdrom2 is important since it's ide cdrom in emulation and thus work without virtio drivers
+
+gnt-instance start safeq
+
+dpavlin@lib30:~$ sudo socat unix:/var/run/ganeti/kvm-hypervisor/ctrl/safeq.monitor -
+
+(qemu) change sd0 /home/dpavlin/virtio-win-0.1.96.iso raw read-only
+change sd0 /home/dpavlin/virtio-win-0.1.96.iso raw read-only
+
+# this doesn't work without viriodrivers allread installed, but
+
+(qemu) change ide1-cd0  /home/dpavlin/virtio-win-0.1.141.iso raw read-only
+change ide1-cd0  /home/dpavlin/virtio-win-0.1.141.iso raw read-only
+
+
+root@lib30:/srv/gnt-info# ./gnt-vnc.sh safeq
+ssh -L 11023:127.0.0.1:11023 lib30.net.ffzg.hr
+vncviewer localhost:5123
+
+
+
+# windows 2003 guest info
+
+https://pve.proxmox.com/wiki/Windows_2003_guest_best_practices
+
+
