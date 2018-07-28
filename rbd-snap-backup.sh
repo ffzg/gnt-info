@@ -16,13 +16,11 @@ rbd clone        $rbd_image@backup backup-$instance-$disk
 
 rbd_dev=`rbd map backup-$instance-$disk`
 
-mkdir /dev/shm/$rbd_image.snap
+test -d /dev/shm/$rbd_image.snap || mkdir /dev/shm/$rbd_image.snap
 
-# FIXME: test does offset work
 # we must mount filesystem read-write to allow journal recovery
-#offset=\`fdisk -l $rbd_dev -u | grep Linux$ | grep $rbd_dev | head -1 | sed 's/\*/ /' | awk '{ print \$2 * 512 }'\`
-#test ! -z "\$offset" && offset=",offset=\$offset"
-#mount $rbd_dev /dev/shm/\$rbd_image.snap -o noatime\$offset
+offset=`fdisk -l $rbd_dev -u -o Device,Start,Type | grep 'Linux$' | grep $rbd_dev | head -1 | sed 's/\*/ /' | awk '{ print \$2 * 512 }'`
+test ! -z "$offset" && offset=",offset=$offset"
 mount $rbd_dev /dev/shm/$rbd_image.snap -o noatime$offset
 
 # execute something on mounted filesystem
