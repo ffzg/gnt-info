@@ -1,0 +1,22 @@
+# CEPH and rbd usage
+
+We are using CEPH to provide some rbd volumes to our ganeti cluster.
+
+First, it's useful to have a list of all rbd volumes and snapshots in cluster:
+
+root@r1u28:/srv/gnt-info# ./gnt-rbd.sh
+docker1 8bd20a37-b1f8-4c58-aa45-1f3cb8bb859a.rbd.disk0
+gray 4ee9a9ee-5081-4965-ba5e-ed2a8cf9d97c.rbd.disk0
+mudrac 78ad4b47-fd52-44b1-ae9b-b8fffc8c1cc5.rbd.disk0
+mudrac 214e17fa-22e4-490d-9ef7-d07d666f6ddf.rbd.disk1
+mudrac 0f4e2fb9-09e5-4459-a381-1f07ba5a98f5.rbd.disk2
+mudrac f734a9d5-0c81-4840-a798-951941f597da.rbd.disk3
+odin.ffzg.hr 31fa150f-8ab3-49bf-8924-7b2b1caece52.rbd.disk0
+odin.ffzg.hr 31fa150f-8ab3-49bf-8924-7b2b1caece52.rbd.disk0@2017-07-20 #30 3072 MB
+odin.ffzg.hr eec7e8bf-809e-4d69-a929-49b6fee3227f.rbd.disk1
+odin.ffzg.hr eec7e8bf-809e-4d69-a929-49b6fee3227f.rbd.disk1@2017-07-20 #31 250 GB
+syslog 45b765f6-316c-46a1-a92a-071113e18fcb.rbd.disk0
+video 7cda803e-f877-4001-b9ce-9d460e3f85b8.rbd.disk0
+video f1991f16-f59c-4e9d-adae-79cbfe034878.rbd.disk1
+
+
