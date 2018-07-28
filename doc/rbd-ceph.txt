@@ -19,4 +19,16 @@ syslog 45b765f6-316c-46a1-a92a-071113e18fcb.rbd.disk0
 video 7cda803e-f877-4001-b9ce-9d460e3f85b8.rbd.disk0
 video f1991f16-f59c-4e9d-adae-79cbfe034878.rbd.disk1
 
+Then there is script to start snapshot backup from rbd instance to lib15:
+
+root@r1u28:/srv/gnt-info# ./rbd-snap-backup.sh odin.ffzg.hr 1
+
+gnt-lv-snap-rsync.sh will call this script if it can't find any lvm volumes
+for that disk
+
+If backup fails for some reason, it might leave mounted filesystem. You have
+to umount that manually. After that, there is cleanup script to remove left-overs
+of @backup snapshots from ceph:
+
+root@r1u28:/srv/gnt-info# ./rbd-remove-snap.sh 
 

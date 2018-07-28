@@ -1,9 +1,10 @@
 #!/bin/sh -xe
 
+test -z "$1" -o -z "$2" && echo "Usage: $0 instance disk" && exit 1
+
 instance=$1
 disk=$2
-
-test -z "$1" -o -z "$2" && echo "Usage: $0 instance disk" && exit 1
+test -z "$backup" && backup="backup"
 
 rbd_image=`gnt-instance info --static $instance | grep logical_id: | cut -d\' -f4 | grep "\.rbd\.disk$disk\$"`
 
@@ -23,8 +24,20 @@ offset=`fdisk -l $rbd_dev -u -o Device,Start,Type | grep 'Linux$' | grep $rbd_de
 test ! -z "$offset" && offset=",offset=$offset"
 mount $rbd_dev /dev/shm/$rbd_image.snap -o noatime$offset
 
-# execute something on mounted filesystem
-read -p "wait for key" key
+
+# XXX do rsync back to lib15
+
+rsync_args=""
+if rsync lib15::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args 2>/dev/null ; then
+	rsync_args="`cat /dev/shm/$instance-rsync.args`"
+fi
+
+rsync -ravHzXA --inplace --numeric-ids --delete $rsync_args \
+	/dev/shm/$rbd_image.snap/ lib15::$backup/$instance/$disk/ \
+&& ssh -i /root/.ssh/id_dsa-zfs lib15 lib15/$backup/$instance/$disk
+
+# XXX backup OK
+
 
 
 umount /dev/shm/$rbd_image.snap

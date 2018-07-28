@@ -20,12 +20,16 @@ echo "# $instance on $node"
 
 vg=`gnt-cluster info | grep 'lvm volume group:' | cut -d: -f2 | tr -d ' '`
 
+found_lvm=0
+
 ssh $node lvs -o name,tags | grep $instance | tee /dev/shm/$instace.$node.lvs | grep disk${disk}_data | while read lv origin ; do
+	found_lvm=1
+
 	disk_nr=`echo $lv | cut -d. -f2 | tr -d a-z_`
 	echo "# $lv | $origin | $disk_nr"
 
 	rsync_args=""
-	if rsync lib15::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args ; then
+	if rsync lib15::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args 2>/dev/null; then
 		rsync_args="`cat /dev/shm/$instance-rsync.args`"
 	fi
 
@@ -58,4 +62,7 @@ __SHELL__
 	ssh -i /root/.ssh/id_dsa-zfs lib15 lib15/$backup/$instance/$disk_nr
 done
 
-
+if [ $found_lvm = 0 ] ; then
+	export backup
+	/srv/gnt-info/rbd-snap-backup.sh $instance $disk
+fi
