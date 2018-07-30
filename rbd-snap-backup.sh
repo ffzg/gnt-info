@@ -7,6 +7,8 @@ disk=$2
 test -z "$backup" && backup="backup"
 test -z "$rsync_host" && rsync_host="lib15"
 
+test "`rsync $rsync_host::$backup/$instance/$disk 2>/dev/null | wc -l`" != 1 && echo "ERROR $rsync_host::$backup/$instance/$disk backup target missing" && exit 1
+
 rbd_image=`gnt-instance info --static $instance | grep logical_id: | cut -d\' -f4 | grep "\.rbd\.disk$disk\$"`
 
 test -z "$rbd_image" && echo "can't find rbd_image name for $instance $disk" && exit 1
