@@ -11,7 +11,7 @@ ls /dev/mapper/*.snap | xargs -i lvremove -f {}
 else
 
 # umount all snapshots
-gnt-cluster command -M mount | grep snap | awk '{ print "ssh "$1" umount "$4 }' | sed 's/: / /' | xargs -i sh -exec {}
+gnt-cluster command -M mount | grep snap | grep -v rbd.disk[0-9].snap | awk '{ print "ssh "$1" umount "$4 }' | sed 's/: / /' | xargs -i sh -exec {}
 
 # remove mount directories
 gnt-cluster command 'rmdir /dev/shm/*.snap'
