@@ -9,7 +9,7 @@ gnt-instance list -o name,disk_template | grep ' rbd$' | cut -d' ' -f1 | while r
 	fi
 done
 
-grep --with-filename logical_id /dev/shm/instance/* | sed "s/^.*\///; s/:.*, '/ /; s/'.*$//;" | tee /dev/shm/instance-rbd | while read instance disk ; do
+grep --with-filename 'logical_id.*rbd' /dev/shm/instance/* | sed "s/^.*\///; s/:.*, '/ /; s/'.*$//;" | tee /dev/shm/instance-rbd | while read instance disk ; do
 	echo "$instance $disk"
 	rbd snap ls $disk | grep -v SNAPID | awk -v instance=$instance -v disk=$disk '{ print instance,disk"@"$2,"#"$1,$3,$4 }'
 done
