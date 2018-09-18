@@ -17,7 +17,7 @@ fi
 
 megacli -AdpAllInfo -aALL | tee /dev/shm/megacli.AdpAllInfo
 
-megacli -LdPdInfo -aALL | tee /dev/shm/megacli.AdpAllInfo
+megacli -LdPdInfo -aALL | tee /dev/shm/megacli.LdPdInfo
 
 megacli -AdpAlILog -aALL | tee /dev/shm/megacli.AdpAlILog | egrep -v '(Sense|IllegalReq|Rdm|Unknown DCDB Opcode)'
 
