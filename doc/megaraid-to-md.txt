@@ -1,0 +1,21 @@
+In our testing, md raid10 is about 30% faster than megaraid's internal raid10.
+
+Here are steps to replace hardware megaraid with software md5 on ganeti.
+
+
+
+
+root@lib30:/srv/gnt-info# gnt-node migrate lib28
+
+root@lib30:/srv/gnt-info# gnt-node modify --drained yes lib28
+
+root@lib30:/srv/gnt-info# hbal -L -X
+
+
+
+This will migrate instances from node, marked it as drained and then hbal will re-distribute drbd disks
+from it to rest of cluster.
+
+Alternative is to use modify -t plain, but that requires instance reboot.
+
+
