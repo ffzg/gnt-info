@@ -1,5 +1,53 @@
 In our testing, md raid10 is about 30% faster than megaraid's internal raid10.
 
+First, let's test original configuration. It 6*1T disks and one SSD before and after bios update.
+
+root@lib24:~# lsblk --scsi -m
+NAME HCTL       TYPE VENDOR   MODEL             REV TRAN NAME   SIZE OWNER GROUP MODE
+sdb  0:0:7:0    disk ATA      INTEL SSDSC2BW24 DC32      sdb  223.6G root  disk  brw-rw----
+sdc  0:2:0:0    disk DELL     PERC H310        2.12      sdc    2.7T root  disk  brw-rw----
+
+root@lib24:~# dmidecode | grep 'BIOS Rev'
+        BIOS Revision: 2.5
+
+root@lib24:~# hdparm -tT /dev/sd[bc]
+
+/dev/sdb:
+ Timing cached reads:   13750 MB in  2.00 seconds = 6890.40 MB/sec
+ Timing buffered disk reads: 950 MB in  3.00 seconds = 316.44 MB/sec
+
+/dev/sdc:
+ Timing cached reads:   13304 MB in  1.99 seconds = 6670.01 MB/sec
+ Timing buffered disk reads: 1332 MB in  3.00 seconds = 443.81 MB/sec
+
+
+
+root@lib24:~# dmidecode | grep 'BIOS Rev'
+        BIOS Revision: 2.7
+root@lib24:~# lsblk --scsi -m
+NAME HCTL       TYPE VENDOR   MODEL             REV TRAN NAME   SIZE OWNER GROUP MODE
+sda  0:0:6:0    disk ATA      WDC WD1002FBYS-1 0C12      sda  931.5G root  disk  brw-rw----
+sdb  0:0:7:0    disk ATA      INTEL SSDSC2BW24 DC32      sdb  223.6G root  disk  brw-rw----
+sdc  0:2:0:0    disk DELL     PERC H310        2.12      sdc    2.7T root  disk  brw-rw----
+root@lib24:~# hdparm -tT /dev/sd[abc]
+
+/dev/sda:
+ Timing cached reads:   13960 MB in  1.99 seconds = 7002.59 MB/sec
+ Timing buffered disk reads: 320 MB in  3.00 seconds = 106.57 MB/sec
+
+/dev/sdb:
+ Timing cached reads:   14004 MB in  1.99 seconds = 7024.47 MB/sec
+ Timing buffered disk reads: 962 MB in  3.00 seconds = 320.66 MB/sec
+
+/dev/sdc:
+ Timing cached reads:   13920 MB in  1.99 seconds = 6981.76 MB/sec
+ Timing buffered disk reads: 1356 MB in  3.00 seconds = 451.81 MB/sec
+
+
+
+
+
+
 Here are steps to replace hardware megaraid with software md5 on ganeti.
 
 
