@@ -218,6 +218,13 @@ root@lib26:~# cat /sys/block/bcache0/bcache/state
 clean
 
 
+Optionally you might want to turn on writeback mode and then state will change
+
+root@lib28:~# echo writeback > /sys/block/bcache0/bcache/cache_mode
+root@lib28:~# cat /sys/block/bcache0/bcache/state
+dirty
+
+
 
 
 root@lib28:~# pvcreate /dev/bcache0 
