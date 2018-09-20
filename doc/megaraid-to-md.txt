@@ -190,7 +190,35 @@ Set UUID:               83ad5994-b266-4e4b-ab6d-9be8fe419e62
 version:                1
 block_size:             1
 data_offset:            16
-root@lib28:~# [Thu Sep 20 02:23:12 2018] bcache: register_bdev() registered backing device md127
+[Thu Sep 20 02:23:12 2018] bcache: register_bdev() registered backing device md127
+
+
+Now attach cache device back to it:
+
+root@lib28:~# bcache-super-show /dev/sdh3 | grep cset.uuid
+cset.uuid               4a61e966-f18d-4fab-836a-3ff027963781
+
+root@lib28:~# echo 4a61e966-f18d-4fab-836a-3ff027963781 > /sys/block/bcache0/bcache/attach 
+[Thu Sep 20 14:18:08 2018] bcache: bch_cached_dev_attach() Caching md127 as bcache0 on set 4a61e966-f18d-4fab-836a-3ff027963781
+
+
+Verify that bcache is active (values should NOT be all zeros if it's working):
+
+root@lib28:~# grep . /sys/fs/bcache/*/stats_total/*
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/bypassed:40.8M
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_bypass_hits:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_bypass_misses:11
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_hit_ratio:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_hits:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_miss_collisions:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_misses:128
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_readaheads:0
+
+root@lib26:~# cat /sys/block/bcache0/bcache/state
+clean
+
+
+
 
 root@lib28:~# pvcreate /dev/bcache0 
   Configuration setting "activation/thin_check_executable" unknown.
