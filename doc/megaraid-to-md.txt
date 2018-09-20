@@ -152,4 +152,64 @@ root@lib28:~# mdadm --create /dev/md0 --level=10 --raid-devices=7 /dev/sd{a,b,c,
 mdadm: Defaulting to version 1.2 metadata
 mdadm: array /dev/md0 started.
 
+...
+
+Wait for rebuild, install bios update, reboot as needed.
+
+root@lib28:~# dmidecode | grep 'BIOS Rev'
+        BIOS Revision: 2.7
+
+root@lib28:~# hdparm -Tt /dev/sdh /dev/sda /dev/md0
+
+# ssd
+/dev/sdh:
+ Timing cached reads:   13856 MB in  1.99 seconds = 6950.11 MB/sec
+ Timing buffered disk reads: 940 MB in  3.00 seconds = 313.22 MB/sec
+
+# single drive
+/dev/sda:
+ Timing cached reads:   13722 MB in  1.99 seconds = 6883.27 MB/sec
+ Timing buffered disk reads: 572 MB in  3.01 seconds = 190.06 MB/sec
+
+# raid10, 7 disks
+/dev/md0:
+ Timing cached reads:   13826 MB in  1.99 seconds = 6935.19 MB/sec
+ Timing buffered disk reads: 1888 MB in  3.01 seconds = 628.05 MB/sec
+
+
+
+root@lib28:~# cat /proc/mdstat 
+Personalities : [raid10] [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] 
+md127 : active (auto-read-only) raid10 sda[0] sdc[2] sdd[3] sdf[5] sdg[6] sdb[1] sde[4]
+      3418209280 blocks super 1.2 512K chunks 2 near-copies [7/7] [UUUUUUU]
+      bitmap: 0/26 pages [0KB], 65536KB chunk
+
+root@lib28:~# make-bcache -B /dev/md127 
+UUID:                   1c2c022b-5ed1-48d2-9ec9-499465af71a8
+Set UUID:               83ad5994-b266-4e4b-ab6d-9be8fe419e62
+version:                1
+block_size:             1
+data_offset:            16
+root@lib28:~# [Thu Sep 20 02:23:12 2018] bcache: register_bdev() registered backing device md127
+
+root@lib28:~# pvcreate /dev/bcache0 
+  Configuration setting "activation/thin_check_executable" unknown.
+  Physical volume "/dev/bcache0" successfully created.
+
+root@lib28:~# vgcreate ffzgvg /dev/bcache0 
+  Configuration setting "activation/thin_check_executable" unknown.
+  Volume group "ffzgvg" successfully created
+
+
+root@lib30:~# gnt-node modify --drained no lib28
+
+
+We should run hbal now to re-balance drbd, but we will first migrate all instances from next
+node to upgrade to save one copy of data over cluster
+
+root@lib30:~# gnt-node migrate lib24
+
+root@lib30:~# gnt-node modify --drained yes lib24
+
+root@lib30:~# hbal -L -X
 
