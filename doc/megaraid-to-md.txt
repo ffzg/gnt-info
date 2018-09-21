@@ -152,7 +152,10 @@ offset               type
                      UUID:  08a9ea8e-0a25-4efd-9075-8966c0d1fb00
 
 
+If there are partition tables on disks, they should be wiped with wipefs -a /dev/drive
+
 It's probably a good idea to reboot here so that linux kernel can re-numerate disks.
+
 
 
 
