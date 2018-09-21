@@ -133,6 +133,29 @@ Adapter: 0: EnclId-32 SlotId-6 state changed to JBOD.
 Exit Code: 0x00
 
 
+Let's now wipe disks which where detected as bcache:
+
+root@lib24:~# dmesg | grep register_bdev
+[    4.941396] bcache: register_bdev() registered backing device sdc
+[  496.314350] bcache: register_bdev() registered backing device sdc
+[  510.221356] bcache: register_bdev() registered backing device sdd
+
+root@lib24:~# wipefs /dev/sd[cd]
+offset               type
+----------------------------------------------------------------
+0x1018               bcache   [other]
+                     UUID:  08a9ea8e-0a25-4efd-9075-8966c0d1fb00
+
+offset               type
+----------------------------------------------------------------
+0x1018               bcache   [other]
+                     UUID:  08a9ea8e-0a25-4efd-9075-8966c0d1fb00
+
+
+It's probably a good idea to reboot here so that linux kernel can re-numerate disks.
+
+
+
 root@lib28:~# lsblk --scsi -m
 NAME HCTL       TYPE VENDOR   MODEL             REV TRAN NAME   SIZE OWNER GROUP MODE
 sda  0:0:7:0    disk ATA      INTEL SSDSC2BW24 DC32      sda  223.6G root  disk  brw-rw----
@@ -143,6 +166,9 @@ sde  0:0:3:0    disk ATA      ST1000NM0033-9ZM GA0A      sde  931.5G root  disk 
 sdf  0:0:4:0    disk ATA      ST1000NM0033-9ZM GA0A      sdf  931.5G root  disk  brw-rw----
 sdg  0:0:5:0    disk ATA      ST1000NM0033-9ZM GA0A      sdg  931.5G root  disk  brw-rw----
 sdh  0:0:6:0    disk ATA      ST1000NM0033-9ZM GA0A      sdh  931.5G root  disk  brw-rw----
+
+
+If you didn't wipe old bcache data you might get error when creating array:
 
 root@lib28:~# mdadm --create /dev/md0 --level=10 --raid-devices=7 /dev/sd{b,c,d,e,f,g,h}
 mdadm: cannot open /dev/sdb: Device or resource busy
@@ -225,6 +251,7 @@ root@lib28:~# hdparm -Tt /dev/sdh /dev/sda /dev/md0
  Timing buffered disk reads: 1888 MB in  3.01 seconds = 628.05 MB/sec
 
 
+Now we need to create new backing block device for bcache:
 
 root@lib28:~# cat /proc/mdstat 
 Personalities : [raid10] [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] 
