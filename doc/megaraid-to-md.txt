@@ -279,6 +279,12 @@ cset.uuid               4a61e966-f18d-4fab-836a-3ff027963781
 root@lib28:~# echo 4a61e966-f18d-4fab-836a-3ff027963781 > /sys/block/bcache0/bcache/attach 
 [Thu Sep 20 14:18:08 2018] bcache: bch_cached_dev_attach() Caching md127 as bcache0 on set 4a61e966-f18d-4fab-836a-3ff027963781
 
+Same as one-liner for easier copy/paste:
+
+root@lib30:/srv/gnt-info# bcache-super-show /dev/sdh3 | grep cset.uuid | awk '{ print $2 }' > /sys/block/bcache0/bcache/attach
+[Mon Sep 24 09:38:35 2018] bcache: bch_cached_dev_attach() Caching md0 as bcache0 on set b8b500d6-b933-428b-a040-5fb0b2cbef49
+
+
 
 Verify that bcache is active (values should NOT be all zeros if it's working):
 
