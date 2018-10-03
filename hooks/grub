@@ -1,0 +1,102 @@
+#!/bin/bash -x
+#
+# This is an example script that install and configure grub after installation.
+# To use it put it in your CUSTOMIZE_DIR and make it executable.
+#
+# Do not include grub in EXTRA_PKGS of
+# $sysconfdir/default/ganeti-instance-debootstrap because it will
+# cause error of debootstrap.
+
+set -e
+
+# On wheezy we debootstrap with extlinux instead of grub
+if [ $SUITE = "wheezy" ]; then
+    exit 0
+fi
+
+. common.sh
+
+CLEANUP=( )
+
+trap cleanup EXIT
+
+if [ -z "$TARGET" -o ! -d "$TARGET" ]; then
+  echo "Missing target directory"
+  exit 1
+fi
+
+if [[ $BLOCKDEV == /dev/drbd* ]]; then
+    DISKTYPE=drbd
+elif dmsetup info $BLOCKDEV > /dev/null 2>&1; then
+    DISKTYPE=lvm
+else
+    echo "Unknown disk type"
+    exit 1
+fi
+
+mount -o bind /dev $TARGET/dev
+CLEANUP+=("umount $TARGET/dev")
+
+mount -t proc proc $TARGET/proc
+CLEANUP+=("umount $TARGET/proc")
+
+# For some reason, /dev/disk/by-uuid/<UUID> is not created. This results in
+# grub refusing to specify the root fs uuid on the commandline, instead it
+# will use $ROOTDEV which is not available in the VM...
+ROOTUUID=$(blkid -o value -s UUID $FSYSDEV)
+#ln -s $FSYSDEV /dev/disk/by-uuid/$ROOTUUID
+CLEANUP+=("rm /dev/disk/by-uuid/$ROOTUUID")
+
+chroot "$TARGET" apt-get update
+chroot "$TARGET" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install grub2
+
+# install grub to make all the modules available ... serial.mod is not available otherwise
+chroot "$TARGET" update-grub
+
+case $DISKTYPE in
+    lvm)
+
+        # When using LVM, grub thinks we're installing to a partition. Using a loop dev fools it
+        LODEV=$(losetup --show -f $BLOCKDEV)
+        CLEANUP+=("losetup -d $LODEV")
+
+
+        # BLOCKDEV has the format /dev/<vgname>/<lvname>, but Grub will be looking
+        # for /dev/mapper/<vgname>-<mangled-lvname> ...
+        # This adds the mapper device to device.map, which is used to translate
+        # the root device node into grub-syntax (i.e., (hd0))
+
+        MAPPERDEV=/dev/mapper/$(dmsetup info -C --noheadings -o name $BLOCKDEV)
+        echo "(hd0) $MAPPERDEV" > $TARGET/boot/grub/device.map
+        chroot "$TARGET" grub-install $LODEV
+        ;;
+    drbd)
+        chroot "$TARGET" grub-install $BLOCKDEV
+        ;;
+esac
+
+cat >> $TARGET/etc/default/grub <<EOF
+GRUB_CMDLINE_LINUX="text console=ttyS0,115200n8"
+GRUB_TERMINAL=serial
+GRUB_SERIAL_COMMAND="serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1"
+EOF
+
+# and do it again, serial.mod should now be available
+chroot "$TARGET" update-grub
+
+case $DISKTYPE in
+    lvm)
+        chroot "$TARGET" grub-install $LODEV
+        ;;
+    drbd)
+        chroot "$TARGET" grub-install $BLOCKDEV
+        ;;
+esac
+
+# For some reason, the loopback device is still busy/open if this sleep is removed ...
+sleep 2
+
+# execute cleanups
+cleanup
+trap - EXIT
+
