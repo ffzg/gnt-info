@@ -1,0 +1,34 @@
+This is a story about booting ganeti instances from kernel inside virtual machine.
+We are using ganeti-instance-debootstrap to create instances and have disk with 4k
+blocks:
+
+# blockdev --getbsz /dev/md127 
+4096
+
+For this to work, we need msdos partition table which is configured with
+
+root@r1u32:~# grep ^PARTITION_STYLE /etc/default/ganeti-instance-debootstrap 
+PARTITION_STYLE="msdos"
+
+This should create one partition, offset by 1M (using default):
+
+root@r1u32:~# tail -8 /etc/default/ganeti-instance-debootstrap 
+
+# PARTITION_ALIGNMENT: the alignment of the partitions in sectors
+# (512B); this defaults to 1MiB to give grub enough space for
+# embedding and for better alignment with modern media (HDDs and
+# SSDs), feel free to increase it if your media has even bigger
+# allocation blocks
+PARTITION_ALIGNMENT=2048
+
+This however doesn't work if we are using 4k blocks on device because
+offset of first partition stored in old primary partition chs format won't
+match with different blocksize.
+
+Solution is to create new partition table after debootstrap (which needs
+host view of partition table with 4k block) using loopback which has 512b
+blocksize.
+
+Patch for this is: deboostrap-4k-msdos.diff
+
+This patch is submitted to upstream: https://github.com/ganeti/instance-debootstrap/pull/2

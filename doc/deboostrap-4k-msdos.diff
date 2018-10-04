@@ -1,0 +1,55 @@
+commit 13ab06fc005d4e2325ac459032d9a5fbbaa7a383
+Author: Dobrica Pavlinusic <dpavlin@rot13.org>
+Date:   Thu Oct 4 12:21:51 2018 +0200
+
+    remove PARTITION_ALIGNMENT and fix 4k block size instance disks
+    
+    Since sfdisk doesn't supprot forced chs geometry any more, in situations
+    where underlaying storage has 4k block, this script will create correct
+    partition table for host, but not for guest which expects 512b blocks.
+    
+    This will make machine unbootable, since once kvm starts partition will
+    be at wrong offset and it won't boot.
+    
+    Solution is to re-create partition table at end using losetup which has
+    512b blocks.
+    
+    Since PARTITION_ALIGNMENT is created using 4k block as base, it will
+    create filesystem at wrong place if you are using default value of 2048.
+    This hard-codes host partition table to 1M (which will work on hosts
+    with both 512b and 4k blocks) and then use 2048 when using 512b blocks.
+
+diff --git a/common.sh.in b/common.sh.in
+index 8caeffc..0029d1e 100644
+--- a/common.sh.in
++++ b/common.sh.in
+@@ -99,8 +99,9 @@ format_disk0() {
+   if sfdisk --help | fgrep -q -- '--no-reread'; then
+     ARGS="--no-reread $ARGS"
+   fi
++  ARGS="--label dos $ARGS"
+   sfdisk $ARGS --quiet "$1" <<EOF
+-${PARTITION_ALIGNMENT},,L,*
++1M,,L,*
+ EOF
+ }
+ 
+@@ -124,6 +125,18 @@ map_disk0() {
+ 
+ unmap_disk0() {
+   kpartx -d -p- $1
++
++  if sfdisk --help | fgrep -q -- '--no-reread'; then
++    ARGS="--no-reread $ARGS"
++  fi
++
++  # loopback device has correct 512b blocks
++  blockdev=$(losetup --show -f $1)
++  sfdisk $ARGS --delete "$blockdev"
++  sfdisk $ARGS --label dos --quiet $blockdev <<EOF
++2048,,L,*
++EOF
++  losetup -d $blockdev
+ }
+ 
+ cleanup() {
