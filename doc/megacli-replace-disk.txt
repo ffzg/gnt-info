@@ -1,0 +1,75 @@
+# find new disk
+
+megacli -PDList -aALL | less
+
+root@lib26:/home/dpavlin# megacli -PDList -aALL | grep -B 17 -A 6 Unconfigured
+
+Enclosure Device ID: 32
+Slot Number: 6
+Enclosure position: 1
+Device Id: 6
+WWN: 5002538d41e987b9
+Sequence Number: 7
+Media Error Count: 0
+Other Error Count: 6
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SATA
+
+Raw Size: 238.474 GB [0x1dcf32b0 Sectors]
+Non Coerced Size: 237.974 GB [0x1dbf32b0 Sectors]
+Coerced Size: 237.875 GB [0x1dbc0000 Sectors]
+Sector Size:  0
+Firmware state: Unconfigured(good), Spun Up
+Device Firmware Level: 3B6Q
+Shield Counter: 0
+Successful diagnostics completion on :  N/A
+SAS Address(0): 0x4433221102000000
+Connected Port Number: 2(path0)
+Inquiry Data: S39KNB0J416517P     Samsung SSD 850 PRO 256GB               EXM03B6Q
+
+# remember enclouser id 32 and slot 6 and verify it:
+
+root@lib26:/srv/gnt-info# megacli -PdInfo -PhysDrv[32:6] -a 0
+
+
+# check if JBOD is enabled on adapter
+
+root@lib26:/home/dpavlin# megacli -AdpGetProp EnableJBOD -a0
+
+Adapter 0: JBOD: Enabled
+
+Exit Code: 0x00
+
+
+# verify that there is foreign disk
+
+root@lib26:/home/dpavlin# megacli -CfgForeign -Scan -aALL 
+                                     
+There are 1 foreign configuration(s) on controller 0.
+
+Exit Code: 0x00
+
+
+# verify that it's new drive
+
+root@lib26:/home/dpavlin# megacli -CfgForeign -Dsply 0 -a0
+
+
+# clear foreign on drive
+
+root@lib26:/home/dpavlin# megacli -CfgForeign -Clear 0 -a0
+
+Foreign configuration 0 is cleared on controller 0.
+
+Exit Code: 0x00
+
+
+# turn disk to JBOD
+
+root@lib26:/home/dpavlin# megacli -PDMakeJBOD -PhysDrv[32:6] -a0
+
+Adapter: 0: EnclId-32 SlotId-6 state changed to JBOD.
+
+Exit Code: 0x00
+

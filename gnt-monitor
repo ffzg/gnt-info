@@ -184,7 +184,7 @@ foreach my $instance ( keys %$stat ) {
 
 close($fh);
 
-if ( system( 'curl', '-XPOST', $INFLUX, '--data-binary', '@/dev/shm/gnt-monitor.influx' ) == 0 ) {
+if ( system( 'curl', '-s', '-XPOST', $INFLUX, '--data-binary', '@/dev/shm/gnt-monitor.influx' ) == 0 ) {
 } else {
 	rename '/dev/shm/gnt-monitor.influx', '/dev/shm/gnt-monitor.influx.bug.' . scalar glob '/dev/shm/gnt-monitor.influx.bug.*';
 	warn "curl failed: $? $!";

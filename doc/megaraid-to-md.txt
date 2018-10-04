@@ -1,0 +1,334 @@
+In our testing, md raid10 is about 30% faster than megaraid's internal raid10.
+
+First, let's test original configuration. It 6*1T disks and one SSD before and after bios update.
+
+root@lib24:~# lsblk --scsi -m
+NAME HCTL       TYPE VENDOR   MODEL             REV TRAN NAME   SIZE OWNER GROUP MODE
+sdb  0:0:7:0    disk ATA      INTEL SSDSC2BW24 DC32      sdb  223.6G root  disk  brw-rw----
+sdc  0:2:0:0    disk DELL     PERC H310        2.12      sdc    2.7T root  disk  brw-rw----
+
+root@lib24:~# dmidecode | grep 'BIOS Rev'
+        BIOS Revision: 2.5
+
+root@lib24:~# hdparm -tT /dev/sd[bc]
+
+/dev/sdb:
+ Timing cached reads:   13750 MB in  2.00 seconds = 6890.40 MB/sec
+ Timing buffered disk reads: 950 MB in  3.00 seconds = 316.44 MB/sec
+
+/dev/sdc:
+ Timing cached reads:   13304 MB in  1.99 seconds = 6670.01 MB/sec
+ Timing buffered disk reads: 1332 MB in  3.00 seconds = 443.81 MB/sec
+
+
+
+root@lib24:~# dmidecode | grep 'BIOS Rev'
+        BIOS Revision: 2.7
+root@lib24:~# lsblk --scsi -m
+NAME HCTL       TYPE VENDOR   MODEL             REV TRAN NAME   SIZE OWNER GROUP MODE
+sda  0:0:6:0    disk ATA      WDC WD1002FBYS-1 0C12      sda  931.5G root  disk  brw-rw----
+sdb  0:0:7:0    disk ATA      INTEL SSDSC2BW24 DC32      sdb  223.6G root  disk  brw-rw----
+sdc  0:2:0:0    disk DELL     PERC H310        2.12      sdc    2.7T root  disk  brw-rw----
+root@lib24:~# hdparm -tT /dev/sd[abc]
+
+/dev/sda:
+ Timing cached reads:   13960 MB in  1.99 seconds = 7002.59 MB/sec
+ Timing buffered disk reads: 320 MB in  3.00 seconds = 106.57 MB/sec
+
+/dev/sdb:
+ Timing cached reads:   14004 MB in  1.99 seconds = 7024.47 MB/sec
+ Timing buffered disk reads: 962 MB in  3.00 seconds = 320.66 MB/sec
+
+/dev/sdc:
+ Timing cached reads:   13920 MB in  1.99 seconds = 6981.76 MB/sec
+ Timing buffered disk reads: 1356 MB in  3.00 seconds = 451.81 MB/sec
+
+
+
+
+
+
+Here are steps to replace hardware megaraid with software md5 on ganeti.
+
+
+
+
+root@lib30:/srv/gnt-info# gnt-node migrate lib28
+
+root@lib30:/srv/gnt-info# gnt-node modify --drained yes lib28
+
+root@lib30:/srv/gnt-info# hbal -L -X
+
+
+
+This will migrate instances from node, marked it as drained and then hbal will re-distribute drbd disks
+from it to rest of cluster.
+
+Alternative is to use modify -t plain, but that requires instance reboot.
+
+
+root@lib28:~# vgremove ffzgvg
+
+root@lib28:~# pvremove /dev/bcache0 
+
+
+
+Then, we need to find bcache block device and deactiate it:
+
+root@lib28:~# cd /sys/fs/bcache/
+root@lib28:/sys/fs/bcache# cd 4a61e966-f18d-4fab-836a-3ff027963781/
+
+root@lib28:/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781# ls -al bdev0
+lrwxrwxrwx 1 root root 0 Sep 19 19:46 bdev0 -> ../../../devices/pci0000:00/0000:00:02.2/0000:03:00.0/host0/target0:2:0/0:2:0:0/block/sdb/bcache
+
+
+root@lib28:~# echo 1 > /sys/block/sdb/bcache/stop 
+[Wed Sep 19 20:05:53 2018] bcache: bcache_device_free() bcache0 stopped
+
+root@lib28:~# megacli -CfgDsply -a0
+
+
+Erase existing config
+
+root@lib28:~# megacli -CfgLdDel -L0 -a0
+                                     
+Adapter 0: Deleted Virtual Drive-0(target id-0)
+
+Exit Code: 0x00
+
+
+Convert all disks to jbod
+
+root@lib28:~# megacli -PDMakeJBOD -PhysDrv[32:0] -a0
+                                     
+Adapter: 0: EnclId-32 SlotId-0 state changed to JBOD.
+
+Exit Code: 0x00
+
+root@lib28:~# megacli -PDMakeJBOD -PhysDrv[32:1] -a0
+
+...
+
+megacli -PDMakeJBOD -PhysDrv[32:6] -a0
+                                     
+Adapter: 0: Failed to change PD state at EnclId-32 SlotId-6.
+
+Exit Code: 0x01
+
+
+This probably means that it has foreign config (makes sense, 7th disk
+comes from another server with raid on it):
+
+root@lib28:~# megacli -CfgForeign -Clear 0 -a0
+                                     
+Foreign configuration 0 is cleared on controller 0.
+
+Exit Code: 0x00
+
+
+root@lib28:~# megacli -PDMakeJBOD -PhysDrv[32:6] -a0
+                                     
+Adapter: 0: EnclId-32 SlotId-6 state changed to JBOD.
+
+Exit Code: 0x00
+
+
+Let's now wipe disks which where detected as bcache:
+
+root@lib24:~# dmesg | grep register_bdev
+[    4.941396] bcache: register_bdev() registered backing device sdc
+[  496.314350] bcache: register_bdev() registered backing device sdc
+[  510.221356] bcache: register_bdev() registered backing device sdd
+
+root@lib24:~# wipefs /dev/sd[cd]
+offset               type
+----------------------------------------------------------------
+0x1018               bcache   [other]
+                     UUID:  08a9ea8e-0a25-4efd-9075-8966c0d1fb00
+
+offset               type
+----------------------------------------------------------------
+0x1018               bcache   [other]
+                     UUID:  08a9ea8e-0a25-4efd-9075-8966c0d1fb00
+
+
+If there are partition tables on disks, they should be wiped with wipefs -a /dev/drive
+
+It's probably a good idea to reboot here so that linux kernel can re-numerate disks.
+
+
+
+
+root@lib28:~# lsblk --scsi -m
+NAME HCTL       TYPE VENDOR   MODEL             REV TRAN NAME   SIZE OWNER GROUP MODE
+sda  0:0:7:0    disk ATA      INTEL SSDSC2BW24 DC32      sda  223.6G root  disk  brw-rw----
+sdb  0:0:0:0    disk ATA      ST1000NM0033-9ZM GA0A      sdb  931.5G root  disk  brw-rw----
+sdc  0:0:1:0    disk ATA      ST1000NM0033-9ZM GA0A      sdc  931.5G root  disk  brw-rw----
+sdd  0:0:2:0    disk ATA      ST1000NM0033-9ZM GA0A      sdd  931.5G root  disk  brw-rw----
+sde  0:0:3:0    disk ATA      ST1000NM0033-9ZM GA0A      sde  931.5G root  disk  brw-rw----
+sdf  0:0:4:0    disk ATA      ST1000NM0033-9ZM GA0A      sdf  931.5G root  disk  brw-rw----
+sdg  0:0:5:0    disk ATA      ST1000NM0033-9ZM GA0A      sdg  931.5G root  disk  brw-rw----
+sdh  0:0:6:0    disk ATA      ST1000NM0033-9ZM GA0A      sdh  931.5G root  disk  brw-rw----
+
+
+If you didn't wipe old bcache data you might get error when creating array:
+
+root@lib28:~# mdadm --create /dev/md0 --level=10 --raid-devices=7 /dev/sd{b,c,d,e,f,g,h}
+mdadm: cannot open /dev/sdb: Device or resource busy
+root@lib28:~# lsblk 
+NAME      MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda         8:0    0 223.6G  0 disk 
+├─sda1      8:1    0   260M  0 part /boot/efi
+├─sda2      8:2    0    10G  0 part /
+└─sda3      8:3    0 213.3G  0 part 
+sdb         8:16   0 931.5G  0 disk 
+└─bcache0 254:0    0 931.5G  0 disk 
+sdc         8:32   0 931.5G  0 disk 
+└─bcache1 254:1    0 931.5G  0 disk 
+sdd         8:48   0 931.5G  0 disk 
+sde         8:64   0 931.5G  0 disk 
+sdf         8:80   0 931.5G  0 disk 
+sdg         8:96   0 931.5G  0 disk 
+sdh         8:112  0 931.5G  0 disk 
+
+Duh!
+
+root@lib28:~# wipefs /dev/sda 
+offset               type
+----------------------------------------------------------------
+0x1018               bcache   [other]
+                     UUID:  2dbf6232-0e89-4d7b-87c7-79897b0a34f2
+
+root@lib28:~# wipefs /dev/sdb
+offset               type
+----------------------------------------------------------------
+0x1018               bcache   [other]
+                     UUID:  2dbf6232-0e89-4d7b-87c7-79897b0a34f2
+
+root@lib28:~# echo 1 > /sys/block/sda/bcache/stop 
+root@lib28:~# [Wed Sep 19 20:25:14 2018] bcache: bcache_device_free() bcache0 stopped
+
+root@lib28:~# echo 1 > /sys/block/sdb/bcache/stop 
+root@lib28:~# [Wed Sep 19 20:25:20 2018] bcache: bcache_device_free() bcache1 stopped
+
+root@lib28:~# lsblk 
+NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda      8:0    0 931.5G  0 disk 
+sdb      8:16   0 931.5G  0 disk 
+sdc      8:32   0 931.5G  0 disk 
+sdd      8:48   0 931.5G  0 disk 
+sde      8:64   0 931.5G  0 disk 
+sdf      8:80   0 931.5G  0 disk 
+sdg      8:96   0 931.5G  0 disk 
+sdh      8:112  0 223.6G  0 disk 
+├─sdh1   8:113  0   260M  0 part /boot/efi
+├─sdh2   8:114  0    10G  0 part /
+└─sdh3   8:115  0 213.3G  0 part 
+
+root@lib28:~# mdadm --create /dev/md0 --level=10 --raid-devices=7 /dev/sd{a,b,c,d,e,f,g}
+mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md0 started.
+
+...
+
+Wait for rebuild, install bios update, reboot as needed.
+
+root@lib28:~# dmidecode | grep 'BIOS Rev'
+        BIOS Revision: 2.7
+
+root@lib28:~# hdparm -Tt /dev/sdh /dev/sda /dev/md0
+
+# ssd
+/dev/sdh:
+ Timing cached reads:   13856 MB in  1.99 seconds = 6950.11 MB/sec
+ Timing buffered disk reads: 940 MB in  3.00 seconds = 313.22 MB/sec
+
+# single drive
+/dev/sda:
+ Timing cached reads:   13722 MB in  1.99 seconds = 6883.27 MB/sec
+ Timing buffered disk reads: 572 MB in  3.01 seconds = 190.06 MB/sec
+
+# raid10, 7 disks
+/dev/md0:
+ Timing cached reads:   13826 MB in  1.99 seconds = 6935.19 MB/sec
+ Timing buffered disk reads: 1888 MB in  3.01 seconds = 628.05 MB/sec
+
+
+Now we need to create new backing block device for bcache:
+
+root@lib28:~# cat /proc/mdstat 
+Personalities : [raid10] [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] 
+md127 : active (auto-read-only) raid10 sda[0] sdc[2] sdd[3] sdf[5] sdg[6] sdb[1] sde[4]
+      3418209280 blocks super 1.2 512K chunks 2 near-copies [7/7] [UUUUUUU]
+      bitmap: 0/26 pages [0KB], 65536KB chunk
+
+root@lib28:~# make-bcache -B /dev/md127 
+UUID:                   1c2c022b-5ed1-48d2-9ec9-499465af71a8
+Set UUID:               83ad5994-b266-4e4b-ab6d-9be8fe419e62
+version:                1
+block_size:             1
+data_offset:            16
+[Thu Sep 20 02:23:12 2018] bcache: register_bdev() registered backing device md127
+
+
+Now attach cache device back to it:
+
+root@lib28:~# bcache-super-show /dev/sdh3 | grep cset.uuid
+cset.uuid               4a61e966-f18d-4fab-836a-3ff027963781
+
+root@lib28:~# echo 4a61e966-f18d-4fab-836a-3ff027963781 > /sys/block/bcache0/bcache/attach 
+[Thu Sep 20 14:18:08 2018] bcache: bch_cached_dev_attach() Caching md127 as bcache0 on set 4a61e966-f18d-4fab-836a-3ff027963781
+
+Same as one-liner for easier copy/paste:
+
+root@lib30:/srv/gnt-info# bcache-super-show /dev/sdh3 | grep cset.uuid | awk '{ print $2 }' > /sys/block/bcache0/bcache/attach
+[Mon Sep 24 09:38:35 2018] bcache: bch_cached_dev_attach() Caching md0 as bcache0 on set b8b500d6-b933-428b-a040-5fb0b2cbef49
+
+
+
+Verify that bcache is active (values should NOT be all zeros if it's working):
+
+root@lib28:~# grep . /sys/fs/bcache/*/stats_total/*
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/bypassed:40.8M
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_bypass_hits:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_bypass_misses:11
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_hit_ratio:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_hits:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_miss_collisions:0
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_misses:128
+/sys/fs/bcache/4a61e966-f18d-4fab-836a-3ff027963781/stats_total/cache_readaheads:0
+
+root@lib26:~# cat /sys/block/bcache0/bcache/state
+clean
+
+
+Optionally you might want to turn on writeback mode and then state will change
+
+root@lib28:~# echo writeback > /sys/block/bcache0/bcache/cache_mode
+root@lib28:~# cat /sys/block/bcache0/bcache/state
+dirty
+
+
+
+
+root@lib28:~# pvcreate /dev/bcache0 
+  Configuration setting "activation/thin_check_executable" unknown.
+  Physical volume "/dev/bcache0" successfully created.
+
+root@lib28:~# vgcreate ffzgvg /dev/bcache0 
+  Configuration setting "activation/thin_check_executable" unknown.
+  Volume group "ffzgvg" successfully created
+
+
+root@lib30:~# gnt-node modify --drained no lib28
+
+
+We should run hbal now to re-balance drbd, but we will first migrate all instances from next
+node to upgrade to save one copy of data over cluster
+
+root@lib30:~# gnt-node migrate lib24
+
+root@lib30:~# gnt-node modify --drained yes lib24
+
+root@lib30:~# hbal -L -X
+
