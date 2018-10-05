@@ -6,6 +6,8 @@
 # Do not include grub in EXTRA_PKGS of
 # $sysconfdir/default/ganeti-instance-debootstrap because it will
 # cause error of debootstrap.
+#
+# based on https://groups.google.com/forum/#!searchin/ganeti/debootstrap|sort:date/ganeti/N8_r8lKoA-k/8ExYRnPUAQAJ
 
 set -e
 
@@ -31,7 +33,8 @@ elif dmsetup info $BLOCKDEV > /dev/null 2>&1; then
     DISKTYPE=lvm
 else
     echo "Unknown disk type"
-    exit 1
+    #exit 1
+    DISKTYPE=unknown
 fi
 
 mount -o bind /dev $TARGET/dev
@@ -70,7 +73,7 @@ case $DISKTYPE in
         echo "(hd0) $MAPPERDEV" > $TARGET/boot/grub/device.map
         chroot "$TARGET" grub-install $LODEV
         ;;
-    drbd)
+    *)
         chroot "$TARGET" grub-install $BLOCKDEV
         ;;
 esac
@@ -88,7 +91,7 @@ case $DISKTYPE in
     lvm)
         chroot "$TARGET" grub-install $LODEV
         ;;
-    drbd)
+    *)
         chroot "$TARGET" grub-install $BLOCKDEV
         ;;
 esac
