@@ -71,10 +71,10 @@ case $DISKTYPE in
 
         MAPPERDEV=/dev/mapper/$(dmsetup info -C --noheadings -o name $BLOCKDEV)
         echo "(hd0) $MAPPERDEV" > $TARGET/boot/grub/device.map
-        chroot "$TARGET" grub-install $LODEV
+        chroot "$TARGET" grub-install --no-floppy $LODEV
         ;;
     *)
-        chroot "$TARGET" grub-install $BLOCKDEV
+        chroot "$TARGET" grub-install --no-floppy $BLOCKDEV
         ;;
 esac
 
