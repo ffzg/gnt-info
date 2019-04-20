@@ -4,7 +4,7 @@
 # smart-megaraid.sh '^# 1'		# default without args
 # SMART="-t long" smart-megaraid.sh	# execute smart command
 
-pattern='(^# [1-2]|test remaining|Hours|Error|Serial|Model|Firmware|Load)'
+pattern='(^# [1-2]|test remaining|Hours|Error|Serial|Model|Firmware|Load|Reallocated|Pending)'
 test ! -z "$1" && pattern=$*
 
 did_megaraid=0
@@ -31,4 +31,4 @@ lsblk --noheadings --scsi -o name | while read drive ; do
 	fi
 done
 
-egrep "$pattern" /dev/shm/smart.* | grep -v -- '-  *0$' | cut -d. -f2- | sed -e 's/:/\t/'
+egrep -i "$pattern" /dev/shm/smart.* | grep -v -- '-  *0$' | cut -d. -f2- | sed -e 's/:/\t/'
