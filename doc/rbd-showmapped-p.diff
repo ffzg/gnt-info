@@ -1,0 +1,20 @@
+--- /usr/share/ganeti/2.15/ganeti/storage/bdev.py.orig	2018-09-08 19:22:03.000000000 +0200
++++ /usr/share/ganeti/2.15/ganeti/storage/bdev.py	2019-04-25 09:16:12.708023721 +0200
+@@ -1020,8 +1020,6 @@
+       showmap_cmd = [
+         constants.RBD_CMD,
+         "showmapped",
+-        "-p",
+-        pool,
+         "--format",
+         "json"
+         ]
+@@ -1036,7 +1034,7 @@
+     except RbdShowmappedJsonError:
+       # For older versions of rbd, we have to parse the plain / text output
+       # manually.
+-      showmap_cmd = [constants.RBD_CMD, "showmapped", "-p", pool]
++      showmap_cmd = [constants.RBD_CMD, "showmapped"]
+       result = utils.RunCmd(showmap_cmd)
+       if result.failed:
+         base.ThrowError("rbd showmapped failed (%s): %s",
