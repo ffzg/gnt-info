@@ -3,6 +3,7 @@
 instance=$1
 disk=$2
 test -z "$backup" && backup="backup"
+test -z "$rsync_server" && rsync_server="lib15"
 
 if [ "$1" = '-' ] ; then
 	read instance disk
@@ -29,7 +30,7 @@ ssh $node lvs -o name,tags | grep $instance | tee /dev/shm/$instace.$node.lvs | 
 	echo "# $lv | $origin | $disk_nr"
 
 	rsync_args=""
-	if rsync lib15::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args 2>/dev/null; then
+	if rsync $rsync_server::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args 2>/dev/null; then
 		rsync_args="`cat /dev/shm/$instance-rsync.args`"
 	fi
 
@@ -44,7 +45,7 @@ cat <<__SHELL__ > /dev/shm/$instance.sh
 	test ! -z "\$offset" && offset=",offset=\$offset"
 	mount /dev/$vg/$lv.snap /dev/shm/$lv.snap -o noatime\$offset
 
-	rsync -ravHzXA --inplace --numeric-ids --delete $rsync_args /dev/shm/$lv.snap/ lib15::$backup/$instance/$disk_nr/
+	rsync -ravHzXA --inplace --numeric-ids --delete $rsync_args /dev/shm/$lv.snap/ $rsync_server::$backup/$instance/$disk_nr/
 
 	umount /dev/shm/$lv.snap
 
@@ -58,8 +59,8 @@ __SHELL__
 
 	ssh $node sh -xe /dev/shm/$instance.sh
 
-	# execute zfs snap on lib15 via ssh command="" wrapper
-	ssh -i /root/.ssh/id_dsa-zfs lib15 lib15/$backup/$instance/$disk_nr
+	# execute zfs snap on $rsync_server via ssh command="" wrapper
+	ssh -i /root/.ssh/id_dsa-zfs $rsync_server $rsync_server/$backup/$instance/$disk_nr
 done
 
 if [ $found_lvm = 0 ] ; then
