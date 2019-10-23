@@ -59,7 +59,7 @@ __SHELL__
 	ssh $node sh -xe /dev/shm/$instance.sh
 
 	# execute zfs snap on lib15 via ssh command="" wrapper
-	ssh -i /root/.ssh/id_dsa-zfs lib15 lib15/$backup/$instance/$disk_nr
+	ssh -i /etc/ganeti/id_dsa-zfs-snap lib15 lib15/$backup/$instance/$disk_nr
 done
 
 if [ $found_lvm = 0 ] ; then

@@ -37,7 +37,7 @@ fi
 
 rsync -ravHzXA --inplace --numeric-ids --delete $rsync_args \
 	/dev/shm/$rbd_image.snap/ $rsync_host::$backup/$instance/$disk/ \
-&& ssh -i /root/.ssh/id_dsa-zfs $rsync_host $rsync_host/$backup/$instance/$disk
+&& ssh -i /etc/ganeti/id_dsa-zfs-snap $rsync_host $rsync_host/$backup/$instance/$disk
 
 # XXX backup OK
 
