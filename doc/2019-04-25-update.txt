@@ -1,0 +1,10 @@
+applied rbd-showmapped-p.diff to remove errors:
+
+Thu Apr 25 09:20:23 2019   - ERROR: instance odin.ffzg.hr: couldn't retrieve status for disk/0 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Thu Apr 25 09:20:23 2019   - ERROR: instance odin.ffzg.hr: couldn't retrieve status for disk/1 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+Thu Apr 25 09:20:23 2019   - ERROR: instance gray: couldn't retrieve status for disk/0 on r1u32.gnt.ffzg.hr: rbd showmapped failed (exited with exit code 1): rbd: unrecognised option '-p'\n
+
+root@r1u30:/home/dpavlin# gnt-cluster renew-crypto --new-cluster-certificate --new-rapi-certificate --new-spice-certifi
+cate
+
+

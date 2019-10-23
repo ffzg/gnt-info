@@ -1,0 +1,60 @@
+
+How to create machine which will boot clonezilla from pxe:
+
+Create lv for future disk
+
+root@r1u32:~# lvcreate -L 30G -n cz2 oscarvg
+WARNING: ext4 signature detected on /dev/oscarvg/cz2 at offset 1080. Wipe it? [y/n]: y
+  Wiping ext4 signature on /dev/oscarvg/cz2.
+  Logical volume "cz2" created.
+
+
+root@r1u32:~# gnt-instance add -B maxmem=2G,vcpus=4 -t plain -n r1u32 -o snf-image+default --os-parameters=img_format=diskdump,img_id=windows2k3,img_properties='{"OSFAMILY":"windows"}' --disk 0:adopt=cz2 --net 0:link=br0063 --no-name-check --no-ip-check --no-start k-cz2
+Wed May  1 15:48:33 2019 * disk 0, size 30.0G
+Wed May  1 15:48:33 2019 adding instance k-cz2 to cluster config
+Wed May  1 15:48:33 2019 adding disks to cluster config
+Wed May  1 15:48:34 2019  - INFO: Waiting for instance k-cz2 to sync disks
+Wed May  1 15:48:34 2019  - INFO: Instance k-cz2's disks are in sync
+Wed May  1 15:48:34 2019  - INFO: Waiting for instance k-cz2 to sync disks
+Wed May  1 15:48:34 2019  - INFO: Instance k-cz2's disks are in sync
+
+root@r1u32:~# gnt-instance modify -H initrd_path=,kernel_path=,boot_order=network k-cz2
+Modified instance k-cz2
+ - hv/kernel_path ->
+ - hv/initrd_path ->
+ - hv/boot_order -> network
+Please don't forget that most parameters take effect only at the next (re)start of the instance initiated by ganeti; restarting from within the instance will not be enough.
+Note that changing hypervisor parameters without performing a restart might lead to a crash while performing a live migration. This will be addressed in future Ganeti versions.
+
+Find mac of new machine:
+
+root@r1u32:~# gnt-instance info k-cz2 | grep MAC
+      MAC: aa:00:00:29:da:96
+
+
+Now you will need to configure booting for mac adress of that machine:
+
+root@dns01:~# vi /etc/dhcp/conf4.d/lib-pub.conf 
+
+subclass "lib-pub-unknown" 1:aa:00:00:29:da:96; # k-cz2 test on oscar ganeti
+
+        host k-cz2 {
+            hardware ethernet aa:00:00:29:da:96; 
+            allow booting;
+            next-server 10.60.4.9;
+            filename "pxelinux.0";
+        }
+
+
+Restart dhcpd to pickup configuration:
+
+root@dns01:~# /etc/init.d/isc-dhcp-server reload
+
+Start machine or rebootit:
+
+root@r1u32:/srv/gnt-info# socat - /var/run/ganeti/kvm-hypervisor/ctrl/k-cz2.monitor
+QEMU 2.8.1 monitor - type 'help' for more information
+(qemu) system_reset
+system_reset
+
+

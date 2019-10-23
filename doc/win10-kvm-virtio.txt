@@ -1,0 +1,21 @@
+Boot machine using kvm -hda to select disk as ide
+
+drvload e:\viostor\w10\x86\viostor.inf
+
+# I can't find drvload on my windows 10 install -- dpavlin
+
+dism /image:f:\ /add-driver /driver:e:\viostor\w10\x86\viostor.inf
+
+
+After installing virtio drivers on ide disk, you have to force safemode boot
+
+search, cmd.exe, run as administrator:
+
+bcdedit /set {current} safeboot minimal
+
+
+Showdown machine and reboot this time using virtio drivers.
+
+disable safeboot:
+
+bcdedit /deletevalue {current} safeboot

@@ -1,0 +1,64 @@
+# export rootfs
+
+root@r1u28:/mnt/mudrac# rbd export rbd/f734a9d5-0c81-4840-a798-951941f597da.rbd.disk3 mudrac-disk3.img
+
+root@r1u28:~# lvcreate -L 21G -n mudrac-root oscarvg
+  Logical volume "mudrac-root" created.
+
+root@r1u28:~# losetup -f /dev/oscarvg/mudrac-root
+root@r1u28:~# losetup
+NAME       SIZELIMIT OFFSET AUTOCLEAR RO BACK-FILE         DIO
+/dev/loop1         0      0         0  0 /dev/dm-72          0
+/dev/loop0         0      0         1  0 /dev/shm/test.img   0
+
+fdisk /dev/loop1
+# create partitions for rootfs so we can later use grub to boot this machine
+
+root@r1u28:~# kpartx -a -v /dev/loop1
+
+root@r1u28:~# dd if=/mnt/mudrac/mudrac-disk3.img of=/dev/mapper/loop1p1 bs=1M
+
+root@r1u28:~# kpartx -d -v /dev/loop1
+del devmap : loop1p1
+
+root@r1u28:~# losetup -d /dev/loop1
+
+root@r1u28:~# mount /dev/oscarvg/mudrac-root /tmp/mudrac-root/ -o offset=`expr 512 \* 2048`
+
+modified:
+
+/etc/fstab
+/etc/network/intrafeces
+
+
+
+# export home
+
+rbd export rbd/214e17fa-22e4-490d-9ef7-d07d666f6ddf.rbd.disk1 /mnt/mudrac/home.img
+
+root@r1u28:~# ls -alh /mnt/mudrac/*.img
+-rw-r--r-- 1 root root 3.4T Aug 25 07:32 /mnt/mudrac/home.img
+-rw-r--r-- 1 root root  20G Aug 25 05:43 /mnt/mudrac/mudrac-disk3.img
+
+root@r1u28:/dev/oscarvg# lvcreate -L 3.5T -n mudrac-home oscarvg
+
+root@r1u28:/mnt/mudrac# dd if=home.img of=/dev/oscarvg/mudrac-home bs=10M
+
+3702261809152 bytes (3.7 TB, 3.4 TiB) copied, 34196 s, 108 MB/s
+
+
+better way would be to dump data directly into lvm with something like:
+
+rbd export -rbd-concurrent-management-ops 20 rbd/214e17fa-22e4-490d-9ef7-d07d666f6ddf.rbd.disk1 - | pv | dd of=/dev/oscarvg/mudrac-home bs=4M
+
+default for -rbd-concurrent-management-ops is 10
+
+
+
+# add instance to ganeti
+
+
+gnt-instance add -B maxmem=4G,vcpus=4 -t plain -n r1u28 -o debootstrap+default  --disk 0:adopt=mudrac-root --disk 1:adopt=mudrac-home --net 0:link=br0002 --net 1:link=br1010 --no-name-check --no-ip-check --no-start mudrac2
+
+gnt-instance modify -t drbd -n r1u30 --no-wait-for-sync mudrac2
+
