@@ -19,11 +19,9 @@ instance=`gnt-instance list --no-headers -o name $instance | head -1`
 node=`gnt-instance list -o pnode --no-headers $instance`
 echo "# $instance on $node"
 
-vg=`gnt-cluster info | grep 'lvm volume group:' | cut -d: -f2 | tr -d ' '`
-
 found_lvm=0
 
-ssh $node lvs -o name,tags | grep $instance | tee /dev/shm/$instace.$node.lvs | grep disk${disk}_data | while read lv origin ; do
+ssh $node lvs -o name,tags,vg_name | grep $instance | tee /dev/shm/$instace.$node.lvs | grep disk${disk}_data | while read lv origin vg ; do
 	found_lvm=1
 
 	disk_nr=`echo $lv | cut -d. -f2 | tr -d a-z_`
