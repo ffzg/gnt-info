@@ -5,9 +5,9 @@ test -z "$1" -o -z "$2" && echo "Usage: $0 instance disk" && exit 1
 instance=$1
 disk=$2
 test -z "$backup" && backup="backup"
-test -z "$rsync_host" && rsync_host="lib15"
+test -z "$rsync_server" && rsync_server="lib15"
 
-test "`rsync $rsync_host::$backup/$instance/$disk 2>/dev/null | wc -l`" != 1 && echo "ERROR $rsync_host::$backup/$instance/$disk backup target missing" && exit 1
+test "`rsync $rsync_server::$backup/$instance/$disk 2>/dev/null | wc -l`" != 1 && echo "ERROR $rsync_server::$backup/$instance/$disk backup target missing" && exit 1
 
 rbd_image=`gnt-instance info --static $instance | grep logical_id: | cut -d\' -f4 | grep "\.rbd\.disk$disk\$"`
 
@@ -28,16 +28,16 @@ test ! -z "$offset" && offset=",offset=$offset"
 mount $rbd_dev /dev/shm/$rbd_image.snap -o noatime$offset
 
 
-# XXX do rsync back to $rsync_host
+# XXX do rsync back to $rsync_server
 
 rsync_args=""
-if rsync $rsync_host::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args 2>/dev/null ; then
+if rsync $rsync_server::$backup/$instance/rsync.args /dev/shm/$instance-rsync.args 2>/dev/null ; then
 	rsync_args="`cat /dev/shm/$instance-rsync.args`"
 fi
 
 rsync -ravHzXA --inplace --numeric-ids --delete $rsync_args \
-	/dev/shm/$rbd_image.snap/ $rsync_host::$backup/$instance/$disk/ \
-&& ssh -i /etc/ganeti/id_dsa-zfs-snap $rsync_host $rsync_host/$backup/$instance/$disk
+	/dev/shm/$rbd_image.snap/ $rsync_server::$backup/$instance/$disk/ \
+&& ssh -i /etc/ganeti/id_dsa-zfs-snap $rsync_server $rsync_server/$backup/$instance/$disk
 
 # XXX backup OK
 
