@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-gnt-cluster command -M ls -l /var/run/ganeti/instance-disks/ | awk '{ print $1 $12 " " $10 }' | tr ':' ' ' | tee /dev/shm/node.drbd.instance.disk
+gnt-cluster command -M ls -l /var/run/ganeti/instance-disks/ | awk '{ print $1 $12 " " $10 }' | tr ':' ' ' > /dev/shm/node.drbd.instance.disk
 
 gnt-cluster command -M cat /proc/drbd | grep cs: | grep -v Connected | tee /dev/shm/drbd.check | \
 	sed 's/: / /g' | \
