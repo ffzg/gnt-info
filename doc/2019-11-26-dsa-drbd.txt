@@ -1,0 +1,4 @@
+gnt-cluster modify -D drbd:net-custom="--max-buffers 36k --sndbuf-size 1024k --rcvbuf-size 2048k"
+gnt-cluster modify -D drbd:c-min-rate=32768
+gnt-cluster modify -D drbd:c-max-rate=98304
+gnt-cluster modify -D drbd:resync-rate=98304 
