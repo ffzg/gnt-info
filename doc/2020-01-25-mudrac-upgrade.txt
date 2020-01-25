@@ -1,0 +1,27 @@
+root@r1u32:/srv/gnt-info# lvs -o vg_name,name,tags | grep mudrac
+  oscarvg 01ee542b-cc5e-4eb7-9ce6-1903630c7d11.disk0_data originstname+mudrac
+  oscarvg 01ee542b-cc5e-4eb7-9ce6-1903630c7d11.disk0_meta originstname+mudrac
+  oscarvg 44d1701a-128f-4a97-a0df-a4e1126db8c5.disk1_data originstname+mudrac
+  oscarvg 44d1701a-128f-4a97-a0df-a4e1126db8c5.disk1_meta originstname+mudrac
+root@r1u32:/srv/gnt-info# lvcreate -L 2G -s -nm2.snap /dev/oscarvg/01ee542b-cc5e-4eb7-9ce6-1903630c7d11.disk0_data
+  Using default stripesize 64.00 KiB.
+  Logical volume "m2.snap" created.
+root@r1u32:/srv/gnt-info# lvcreate -L20G -n m2 oscarvg
+  Logical volume "m2" created.
+
+root@r1u32:/srv/gnt-info# time ionice dd if=/dev/oscarvg/m2.snap of=/dev/oscarvg/m2 bs=1M status=progress
+
+22548578304 bytes (23 GB, 21 GiB) copied, 156.957 s, 144 MB/s
+
+real    2m36.959s
+user    0m0.056s
+sys     0m54.464s
+
+root@r1u32:/srv/gnt-info# lvremove /dev/oscarvg/m2.snap
+Do you really want to remove active logical volume oscarvg/m2.snap? [y/n]: y
+  Logical volume "m2.snap" successfully removed
+
+root@r1u32:/srv/gnt-info# lvcreate -L 4G -n m2-home oscarvg
+
+kvm -m 1024 -drive file=/dev/oscarvg/m2,format=raw,if=virtio -drive file=/dev/oscarvg/m2-home,format=raw,if=virtio -nographic -kernel /boot/vmlinuz-3.16.0-5-amd64 -initrd /boot/initrd.img-3.16.0-5-amd64 -append 'root=/dev/vda1 ro console=ttyS0,38400' -net nic -net user
+
