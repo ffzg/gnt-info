@@ -25,3 +25,32 @@ root@r1u32:/srv/gnt-info# lvcreate -L 4G -n m2-home oscarvg
 
 kvm -m 1024 -drive file=/dev/oscarvg/m2,format=raw,if=virtio -drive file=/dev/oscarvg/m2-home,format=raw,if=virtio -nographic -kernel /boot/vmlinuz-3.16.0-5-amd64 -initrd /boot/initrd.img-3.16.0-5-amd64 -append 'root=/dev/vda1 ro console=ttyS0,38400' -net nic -net user
 
+This required me to install pump inside virtual machine to acquire IP address via dhcp from -net user
+
+Next step was to configure unique hostname (so I don't get confused on command prompt) and dummy instance on which local
+services will bind
+
+
+diff --git a/hostname b/hostname
+index 1df9930..08bb233 100644
+--- a/hostname
++++ b/hostname
+@@ -1 +1 @@
+-mudrac
++m2
+diff --git a/network/interfaces b/network/interfaces
+index 16dfb1c..8fb5c12 100644
+--- a/network/interfaces
++++ b/network/interfaces
+@@ -17,3 +17,11 @@ iface eth1 inet static
+ #    address 10.80.3.11
+ #    netmask 255.255.255.0
+ #    up /sbin/ip link set dev $IFACE mtu 9000
++
++# XXX mudrac upgrade
++auto eth2
++iface eth2 inet dhcp
++auto dummy0
++iface dummy0 inet static
++    address 10.10.10.2
++    netmask 255.255.255.0
