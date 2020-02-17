@@ -7,6 +7,12 @@ gnt-lvs.sh
 
 If this doesn't return enough information you can try smart:
 
+refresh smart dumps in /dev/shm with:
+
+./gnt-smart.sh clean
+
+and generate report:
+
 ./gnt-smart-query.sh Power_On_Hours
 
 
