@@ -18,6 +18,12 @@ if [ "$op" = "command" ] ; then
 		ssh $host $* | sed "s/^/$prefix/"
 
 	done
+
+elif [ "$op" = "copyfile" ] ; then
+
+	scp $1 lib10:$1
+	scp $1 lib20:$1
+
 else
 	echo "UNKNOWN [$op] $*"
 	exit 1
