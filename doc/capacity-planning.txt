@@ -5,3 +5,8 @@ gnt-pv-usage.sh
 gnt-vg-usage.sh
 gnt-lvs.sh
 
+If this doesn't return enough information you can try smart:
+
+./gnt-smart-query.sh Power_On_Hours
+
+
