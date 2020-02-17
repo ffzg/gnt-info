@@ -43,4 +43,8 @@ __SHELL__
 
 	ssh $node sh -xe /dev/shm/$instance.sh
 
+
+	echo "TEST: kvm -m 1024 -drive file=/dev/$target_vg/$instance.$disk_nr,format=raw,if=virtio -nographic -net nic -net user"
+	echo "after login: ifdown eth0 ; dhclient eth0"
 done
+
