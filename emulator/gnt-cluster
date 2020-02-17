@@ -1,0 +1,24 @@
+#!/bin/sh -e
+
+op=$1 ; shift
+
+if [ "$op" = "command" ] ; then
+
+	show_machine=0
+	if [ $1 = '-M' ] ; then # FIXME --machine
+		shift
+		show_machine=1
+	fi
+
+	for host in lib10 lib15 lib20 ; do
+
+		prefix=''
+		test $show_machine && prefix="$host: "
+		#echo "# ssh $host $*"
+		ssh $host $* | sed "s/^/$prefix/"
+
+	done
+else
+	echo "UNKNOWN [$op] $*"
+	exit 1
+fi
