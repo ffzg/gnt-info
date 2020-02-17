@@ -32,4 +32,7 @@ lsblk --noheadings --scsi -o name | while read drive ; do
 	fi
 done
 
+grep 'Serial Number' /dev/shm/smart.sd* | cut -d: -f3| sort | uniq -c | grep -v ' 1 ' | awk '{ print $2 }' > /dev/shm/smart.duplicate && \
+	grep -l -f /dev/shm/smart.duplicate /dev/shm/smart.sd? | xargs -i rm -v {}
+
 egrep -i "$pattern" /dev/shm/smart.* | grep -v -- '-  *0$' | cut -d. -f2- | sed -e 's/:/\t/'
