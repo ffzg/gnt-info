@@ -1,0 +1,7 @@
+To get overview of your disk capacity run following commands in order:
+
+gnt-disks.sh
+gnt-pv-usage.sh
+gnt-vg-usage.sh
+gnt-lvs.sh
+
