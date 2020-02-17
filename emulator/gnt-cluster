@@ -26,6 +26,10 @@ elif [ "$op" = "copyfile" ] ; then
 	rsync $1 lib10:$1
 	rsync $1 lib20:$1
 
+elif [ "$op" = "install" ] ; then # use as "install it" since needs install command and arg
+
+	ln -sfv `pwd`/gnt-cluster /usr/local/bin/
+
 else
 	echo "UNKNOWN [$op] $*"
 	exit 1
