@@ -2,6 +2,8 @@
 
 op=$1 ; shift
 
+test -z "$1" && exit 1
+
 if [ "$op" = "command" ] ; then
 
 	show_machine=0
@@ -21,8 +23,8 @@ if [ "$op" = "command" ] ; then
 
 elif [ "$op" = "copyfile" ] ; then
 
-	scp $1 lib10:$1
-	scp $1 lib20:$1
+	rsync $1 lib10:$1
+	rsync $1 lib20:$1
 
 else
 	echo "UNKNOWN [$op] $*"
