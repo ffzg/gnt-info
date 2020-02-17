@@ -28,6 +28,7 @@ lsblk --noheadings --scsi -o name | while read drive ; do
 	smartctl -a /dev/$drive > /dev/shm/smart.$drive
 	if egrep -q '(PERC|MegaRaid|DELL)' /dev/shm/smart.$drive ; then
 		megaraid $drive
+		rm /dev/shm/smart.$drive
 	fi
 done
 
