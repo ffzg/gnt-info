@@ -6,7 +6,7 @@ use POSIX;
 use Time::HiRes qw(time sleep);
 
 my $DEBUG = $ENV{DEBUG} || 0;
-my $INFLUX = $ENV{INFLUX} || 'http://10.80.3.89:8086/write?db=gnt';
+my $INFLUX = $ENV{INFLUX} || 'http://10.80.3.89:8086/write?consistency=any&db=gnt';
 my $INTERVAL = $ENV{INTERVAL} || 1;
 my $DC = $ENV{DC};
 my $RACK = $ENV{RACK};
