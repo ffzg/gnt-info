@@ -2,7 +2,7 @@
 
 op=$1 ; shift
 
-test -z "$1" && exit 1
+test -z "$1" && echo "Usage: $0 command id" && exit 1
 
 if [ "$op" = "command" ] ; then
 
@@ -12,19 +12,25 @@ if [ "$op" = "command" ] ; then
 		show_machine=1
 	fi
 
-	for host in lib10 lib15 lib20 ; do
+	for host in $(cat /etc/ganeti.hosts) ; do
 
 		prefix=''
 		test $show_machine && prefix="$host: "
 		#echo "# ssh $host $*"
-		ssh $host $* | sed "s/^/$prefix/"
+		ssh root@$host $* | sed "s/^/$prefix/"
 
 	done
 
 elif [ "$op" = "copyfile" ] ; then
 
-	rsync $1 lib10:$1
-	rsync $1 lib20:$1
+	my_hostname=$(hostname -s)
+	for host in $(cat /etc/ganeti.hosts | grep -v $my_hostname) ; do
+		rsync $1 root@$host:$1
+	done
+
+elif [ "$op" = "install" ] ; then # use as "install it" since needs install command and arg
+
+	ln -sfv `pwd`/gnt-cluster /usr/local/bin/
 
 else
 	echo "UNKNOWN [$op] $*"
