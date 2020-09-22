@@ -4,6 +4,9 @@ instance=$1
 disk=$2
 target_vg=ssd
 
+# to specify target vg use VG enviroment varible like:
+# VG=oscarvg ./gnt-lv2ssd.sh dataverse 0
+
 if [ "$1" = '-' ] ; then
 	read instance disk
 elif [ -z "$instance" -o -z "$disk" ] ; then
@@ -12,6 +15,8 @@ elif [ -z "$instance" -o -z "$disk" ] ; then
 fi
 
 test -z "$instance" && exit 1
+
+test ! -z "VG" && target_vg=$VG
 
 instance=`gnt-instance list --no-headers -o name $instance | head -1`
 
