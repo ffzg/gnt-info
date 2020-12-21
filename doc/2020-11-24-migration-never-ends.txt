@@ -1,0 +1,21 @@
+root@lib28:~# echo 'info migrate' |  /usr/bin/socat STDIO UNIX-CONNECT:/var/run/ganeti/kvm-hypervisor/ctrl/theta.ffzg.hr.monitor | grep dirty
+dirty sync count: 1526
+dirty pages rate: 32512 pages
+
+It never ends
+
+Useful hints are at https://github.com/ganeti/ganeti/issues/950
+
+root@lib28:~# echo 'migrate_cancel' |  /usr/bin/socat STDIO UNIX-CONNECT:/var/run/ganeti/kvm-hypervisor/ctrl/theta.ffzg.hr.monitor | grep dirty
+root@lib28:~# echo 'info migrate' |  /usr/bin/socat STDIO UNIX-CONNECT:/var/run/ganeti/kvm-hypervisor/ctrl/theta.ffzg.hr.monitor | grep dirty
+
+ok, it stopped.
+
+root@lib26:/home/dpavlin/instances# gnt-instance modify -H migration_downtime=2000 theta
+Modified instance theta
+ - hv/migration_downtime -> 2000
+
+Ensure that kvm is correctly configured:
+
+gnt-cluster modify -H kvm:migration_caps=xbzrle:auto-converge:zero-blocks
+
