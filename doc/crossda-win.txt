@@ -1,0 +1,28 @@
+# windows 10 installation using ide disk and virtio cd to install drivers
+
+
+gnt-instance add -B maxmem=2G,vcpus=2 -t plain -n r1u28 \
+-o snf-image+default --os-parameters=img_format=diskdump,img_id=windows10,img_properties='{"OSFAMILY":"windows"}' \
+-s 20G \
+--net 0:link=br0002 \
+--no-name-check --no-ip-check --no-start crossda-win
+
+https://pve.proxmox.com/wiki/Windows_10_guest_best_practices
+
+gnt-instance modify -H cdrom_disk_type=ide crossda-win
+
+gnt-instance start -H cdrom_image_path=/tmp/iso/Win10_20H2_v2_EnglishInternational_x64.iso,cdrom2_image_path=/home/dpavlin/virtio-win.iso,boot_order=cdrom crossda-win
+
+
+# install vioscsi driver during windows installation to make disk visible
+
+
+gnt-instance stop crossda-win
+
+
+gnt-instance modify -t drbd -n r1u30 crossda-win
+
+gnt-instance modify -H vnc_bind_address=127.0.0.1,kernel_path=,initrd_path= crossda-win
+
+gnt-instance start crossda-win
+
