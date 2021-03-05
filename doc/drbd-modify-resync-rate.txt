@@ -1,0 +1,114 @@
+
+
+Primary:
+
+drbdsetup disk-options --c-min-rate=300M <resource number>
+
+Secondary:
+
+drbdsetup disk-options --c-min-rate=300M <resource number>
+drbdsetup disk-options --c-fill-target=20M <resource number>
+drbdsetup show <resource number> - then take a look at address:port for _this_host and _remote_host and then do this:
+
+drbdsetup net-options <_this_host address:port> <_remote_host address:port> --max-buffers=36k --sndbuf-size=1024k --rcvbuf-size=2048k
+
+# primary
+
+root@r1u28:~# grep -A 3 Sync /proc/drbd
+ 2: cs:SyncSource ro:Primary/Secondary ds:UpToDate/Inconsistent B r-----
+    ns:659920972 nr:0 dw:4919308 dr:685106104 al:6946 bm:0 lo:4 pe:0 ua:4 ap:0 ep:1 wo:f oos:3625043016
+        [==>.................] sync'ed: 15.4% (3540080/4182016)M
+        finish: 49:21:38 speed: 20,380 (12,288) K/sec
+
+root@r1u28:~# drbdsetup show 2
+resource resource2 {
+    options {
+    }
+    net {
+        protocol                B;
+        max-buffers             36864;
+        sndbuf-size             1048576; # bytes
+        rcvbuf-size             2097152; # bytes
+        cram-hmac-alg           "md5";
+        shared-secret           "7db38910e6822aa309beac17be18adf3f07a1bf0";
+        after-sb-0pri           discard-zero-changes;
+        after-sb-1pri           consensus;
+    }
+    _remote_host {
+        address                 ipv4 10.80.2.51:11034;
+    }
+    _this_host {
+        address                 ipv4 10.80.2.53:11034;
+        volume 0 {
+            device                      minor 2;
+            disk                        "/dev/oscarvg/ebacd5f5-b172-4988-955c-a36dcd6c8377.disk1_data";
+            meta-disk                   "/dev/oscarvg/ebacd5f5-b172-4988-955c-a36dcd6c8377.disk1_meta";
+            disk {
+                size                    8564768768s; # bytes
+                c-plan-ahead            10; # 1/10 seconds
+                c-delay-target          1; # 1/10 seconds
+                c-max-rate              98304k; # bytes/second
+                c-min-rate              32768k; # bytes/second
+            }
+        }
+    }
+}
+
+
+
+# secondary
+
+root@r1u32:/srv/gnt-info/doc# grep -A 3 Sync /proc/drbd
+25: cs:SyncTarget ro:Secondary/Primary ds:Inconsistent/UpToDate B r-----
+    ns:0 nr:654510900 dw:654510900 dr:0 al:8 bm:0 lo:0 pe:4 ua:0 ap:0 ep:1 wo:f oos:3630421688
+        [==>.................] sync'ed: 15.3% (3545332/4182016)M
+        finish: 48:05:37 speed: 20,964 (12,260) want: 12,320 K/sec
+
+root@r1u32:~# drbdsetup show 25
+resource resource25 {
+    options {
+    }
+    net {
+        protocol                B;
+        max-buffers             36864;
+        sndbuf-size             1048576; # bytes
+        rcvbuf-size             2097152; # bytes
+        cram-hmac-alg           "md5";
+        shared-secret           "7db38910e6822aa309beac17be18adf3f07a1bf0";
+        after-sb-0pri           discard-zero-changes;
+        after-sb-1pri           consensus;
+    }
+    _remote_host {
+        address                 ipv4 10.80.2.53:11034;
+    }
+    _this_host {
+        address                 ipv4 10.80.2.51:11034;
+        volume 0 {
+            device                      minor 25;
+            disk                        "/dev/oscarvg/ebacd5f5-b172-4988-955c-a36dcd6c8377.disk1_data";
+            meta-disk                   "/dev/oscarvg/ebacd5f5-b172-4988-955c-a36dcd6c8377.disk1_meta";
+            disk {
+                size                    8564768768s; # bytes
+                c-plan-ahead            10; # 1/10 seconds
+                c-delay-target          1; # 1/10 seconds
+                c-max-rate              98304k; # bytes/second
+                c-min-rate              32768k; # bytes/second
+            }
+        }
+    }
+}
+
+
+## modifications
+
+root@r1u28:~# drbdsetup disk-options --c-min-rate=50M 2
+root@r1u28:~# drbdsetup disk-options --c-plan-ahead=50 2
+root@r1u28:~# drbdsetup disk-options --c-delay-target=20 2
+
+root@r1u32:~# drbdsetup disk-options --c-min-rate=50M 25
+root@r1u32:~# drbdsetup disk-options --c-plan-ahead=50 25
+root@r1u32:~# drbdsetup disk-options --c-delay-target=20 25
+
+https://www.linbit.com/blog/drbd-sync-rate-controller/
+describes values which don't match well with my setup
+
