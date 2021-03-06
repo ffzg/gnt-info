@@ -35,5 +35,9 @@ root@lib26:~# vgcreate ssd /dev/sde3
   Volume group "ssd" successfully created
 
 
+# after md0 array rebuild is finished
+mdadm --grow --bitmap=none /dev/md0
+
+
 
 
