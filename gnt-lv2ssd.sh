@@ -16,7 +16,7 @@ fi
 
 test -z "$instance" && exit 1
 
-test ! -z "VG" && target_vg=$VG
+test ! -z "$VG" && target_vg=$VG
 
 instance=`gnt-instance list --no-headers -o name $instance | head -1`
 
