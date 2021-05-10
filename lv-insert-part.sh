@@ -7,6 +7,9 @@ test -z "$1" || test ! -e "$1" && echo "Usage: $0 /path/to/lv" && exit 1
 lvs --noheadings -o vg_name,name,lv_size $1 | tee /dev/stderr | while read vg_name name lv_size ; do
 	lvcreate -s -L $lv_size -n ${name}.snap /dev/$vg_name/$name
 
+	# wipe beginning so that grub-install doesn't complain
+	dd if=/dev/zero of=/dev/$vg_name/$name bs=1 count=2048
+
 	# create partition
 	echo '2048,+,L,*' | sfdisk --no-reread /dev/$vg_name/$name
 
