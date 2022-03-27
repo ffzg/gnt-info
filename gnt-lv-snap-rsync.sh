@@ -34,7 +34,7 @@ ssh $node lvs -o name,tags,vg_name | grep $instance | tee /dev/shm/$instace.$nod
 
 cat <<__SHELL__ > /dev/shm/$instance.sh
 
-	lvcreate -L20480m -s -n$lv.snap /dev/$vg/$lv
+	lvcreate -L10240m -s -n$lv.snap /dev/$vg/$lv
 
 	mkdir /dev/shm/$lv.snap
 
