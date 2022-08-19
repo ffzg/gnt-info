@@ -1,0 +1,1 @@
+ip link | grep ': br' | sort -k 2
