@@ -39,7 +39,7 @@ cat <<__SHELL__ > /dev/shm/$instance.sh
 	mkdir /dev/shm/$lv.snap
 
 	# we must mount filesystem read-write to allow journal recovery
-	offset=\`fdisk -l /dev/$vg/$lv.snap -u | grep Linux$ | grep /dev/$vg/$lv.snap | head -1 | sed 's/\*/ /' | awk '{ print \$2 * 512 }'\`
+	offset=\`fdisk -l /dev/$vg/$lv.snap -u | grep Linux | grep /dev/$vg/$lv.snap | head -1 | sed 's/\*/ /' | awk '{ print \$2 * 512 }'\`
 	test ! -z "\$offset" && offset=",offset=\$offset"
 	mount /dev/$vg/$lv.snap /dev/shm/$lv.snap -o noatime\$offset
 
