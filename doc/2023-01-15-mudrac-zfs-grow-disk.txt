@@ -136,6 +136,18 @@ Sun Jan 15 13:01:20 2023  - INFO: Instance mudrac2's disks are in sync
 
 # TODO
 
+# 14:27
 gnt-instance reboot mudrac2
 
+# 14:28
 zpool online -e mudrac vdb
+
+root@mudrac2:~# zpool list
+NAME     SIZE  ALLOC   FREE  CKPOINT  EXPANDSZ   FRAG    CAP  DEDUP    HEALTH  ALTROOT
+mudrac  3.09T  2.98T   119G        -       96G    76%    96%  1.00x    ONLINE  -
+root@mudrac2:~# zpool online -e mudrac vdb
+root@mudrac2:~# zpool list
+NAME     SIZE  ALLOC   FREE  CKPOINT  EXPANDSZ   FRAG    CAP  DEDUP    HEALTH  ALTROOT
+mudrac  3.19T  2.98T   215G        -         -    74%    93%  1.00x    ONLINE  -
+
+
