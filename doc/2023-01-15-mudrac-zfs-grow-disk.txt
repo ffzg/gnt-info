@@ -1,0 +1,141 @@
+Instance               Status     VCPUs Memory DiskUsage Disk_template Disks Primary_node      Secondary_Nodes
+mudrac2                running        8   8.0G      3.1T drbd              2 r1u32.gnt.ffzg.hr r1u30.gnt.ffzg.hr
+
+  501  gnt-ill mudrac2
+  502  history | grep mudrac2
+  503  cd /home/dpavlin/instances
+  504  gnt-instance info mudrac2 > mudrac2
+  505  git diff
+  506  less mudrac2
+  507  history
+root@r1u32:/home/dpavlin/instances# grep disk mudrac2
+    boot_order: default (disk)
+    cdrom_disk_type: default ()
+    disk_aio: default (threads)
+    disk_cache: default (default)
+    disk_type: default (paravirtual)
+    - disk/0: drbd, size 10.0G
+          logical_id: oscarvg/edd66c53-22cf-4d6e-af51-7fb205cb1cd4.disk0_data
+          on primary: /dev/oscarvg/edd66c53-22cf-4d6e-af51-7fb205cb1cd4.disk0_data (253:4)
+          on secondary: /dev/oscarvg/edd66c53-22cf-4d6e-af51-7fb205cb1cd4.disk0_data (253:20)
+          logical_id: oscarvg/edd66c53-22cf-4d6e-af51-7fb205cb1cd4.disk0_meta
+          on primary: /dev/oscarvg/edd66c53-22cf-4d6e-af51-7fb205cb1cd4.disk0_meta (253:19)
+          on secondary: /dev/oscarvg/edd66c53-22cf-4d6e-af51-7fb205cb1cd4.disk0_meta (253:21)
+    - disk/1: drbd, size 3.1T
+          logical_id: oscarvg/64e7af1e-0461-421d-b0bf-2a44663d6acd.disk1_data
+          on primary: /dev/oscarvg/64e7af1e-0461-421d-b0bf-2a44663d6acd.disk1_data (253:18)
+          on secondary: /dev/oscarvg/64e7af1e-0461-421d-b0bf-2a44663d6acd.disk1_data (253:22)
+          logical_id: oscarvg/64e7af1e-0461-421d-b0bf-2a44663d6acd.disk1_meta
+          on primary: /dev/oscarvg/64e7af1e-0461-421d-b0bf-2a44663d6acd.disk1_meta (253:47)
+          on secondary: /dev/oscarvg/64e7af1e-0461-421d-b0bf-2a44663d6acd.disk1_meta (253:23)
+
+root@r1u32:/home/dpavlin/instances# gnt-instance grow-disk --dry-run mudrac2 1 100G
+Sun Jan 15 11:33:04 2023  - INFO: dry-run mode requested, not actually executing the operationr
+
+root@r1u32:/home/dpavlin/instances# gnt-instance grow-disk --dry-run mudrac2 1 100G
+Sun Jan 15 11:33:04 2023  - INFO: dry-run mode requested, not actually executing the operation
+
+
+it might be much faster to just add another disk, since this sync will take a while
+
+root@r1u32:/home/dpavlin/instances# gnt-instance grow-disk mudrac2 1 100G
+Sun Jan 15 11:33:52 2023 Growing disk 1 of instance 'mudrac2' by 100.0G to 3.2T
+Sun Jan 15 11:33:54 2023  - INFO: Waiting for instance mudrac2 to sync disks
+Sun Jan 15 11:33:54 2023  - INFO: - device disk/1:  0.10% done, 3d 0h 49m 3s remaining (estimated)
+Sun Jan 15 11:34:54 2023  - INFO: - device disk/1:  0.60% done, 1h 48m 59s remaining (estimated)
+Sun Jan 15 11:35:54 2023  - INFO: - device disk/1:  1.70% done, 1h 42m 47s remaining (estimated)
+Sun Jan 15 11:36:54 2023  - INFO: - device disk/1:  2.50% done, 1h 24m 20s remaining (estimated)
+Sun Jan 15 11:37:54 2023  - INFO: - device disk/1:  5.20% done, 27m 35s remaining (estimated)
+Sun Jan 15 11:38:55 2023  - INFO: - device disk/1:  6.10% done, 2h 12m 11s remaining (estimated)
+Sun Jan 15 11:39:55 2023  - INFO: - device disk/1:  7.30% done, 45m 56s remaining (estimated)
+Sun Jan 15 11:40:55 2023  - INFO: - device disk/1:  8.80% done, 1h 36m 37s remaining (estimated)
+Sun Jan 15 11:41:55 2023  - INFO: - device disk/1: 10.00% done, 44m 46s remaining (estimated)
+Sun Jan 15 11:42:55 2023  - INFO: - device disk/1: 12.20% done, 40m 5s remaining (estimated)
+Sun Jan 15 11:43:56 2023  - INFO: - device disk/1: 12.90% done, 1h 48m 41s remaining (estimated)
+Sun Jan 15 11:44:56 2023  - INFO: - device disk/1: 14.40% done, 36m 9s remaining (estimated)
+Sun Jan 15 11:45:56 2023  - INFO: - device disk/1: 15.90% done, 1h 22m 37s remaining (estimated)
+Sun Jan 15 11:46:56 2023  - INFO: - device disk/1: 16.60% done, 1h 16m 5s remaining (estimated)
+Sun Jan 15 11:47:56 2023  - INFO: - device disk/1: 19.30% done, 22m 10s remaining (estimated)
+Sun Jan 15 11:48:57 2023  - INFO: - device disk/1: 20.30% done, 2h 2m 49s remaining (estimated)
+Sun Jan 15 11:49:57 2023  - INFO: - device disk/1: 21.20% done, 53m 33s remaining (estimated)
+Sun Jan 15 11:50:57 2023  - INFO: - device disk/1: 22.50% done, 2h 20m 5s remaining (estimated)
+Sun Jan 15 11:51:57 2023  - INFO: - device disk/1: 23.20% done, 1h 19m 9s remaining (estimated)
+Sun Jan 15 11:52:57 2023  - INFO: - device disk/1: 25.00% done, 45m 24s remaining (estimated)
+Sun Jan 15 11:53:58 2023  - INFO: - device disk/1: 25.50% done, 3h 27m 0s remaining (estimated)
+Sun Jan 15 11:54:58 2023  - INFO: - device disk/1: 26.20% done, 57m 15s remaining (estimated)
+Sun Jan 15 11:55:58 2023  - INFO: - device disk/1: 27.00% done, 3h 16m 6s remaining (estimated)
+Sun Jan 15 11:56:58 2023  - INFO: - device disk/1: 27.70% done, 1h 25m 20s remaining (estimated)
+Sun Jan 15 11:57:59 2023  - INFO: - device disk/1: 28.70% done, 2h 10m 41s remaining (estimated)
+Sun Jan 15 11:58:59 2023  - INFO: - device disk/1: 29.20% done, 2h 19m 16s remaining (estimated)
+Sun Jan 15 11:59:59 2023  - INFO: - device disk/1: 30.70% done, 35m 22s remaining (estimated)
+Sun Jan 15 12:00:59 2023  - INFO: - device disk/1: 31.60% done, 2h 13m 18s remaining (estimated)
+Sun Jan 15 12:02:00 2023  - INFO: - device disk/1: 32.60% done, 34m 15s remaining (estimated)
+Sun Jan 15 12:03:00 2023  - INFO: - device disk/1: 34.50% done, 36m 35s remaining (estimated)
+Sun Jan 15 12:04:00 2023  - INFO: - device disk/1: 35.20% done, 1h 46m 9s remaining (estimated)
+Sun Jan 15 12:05:00 2023  - INFO: - device disk/1: 35.90% done, 1h 31m 27s remaining (estimated)
+Sun Jan 15 12:06:00 2023  - INFO: - device disk/1: 36.40% done, 1h 52m 39s remaining (estimated)
+Sun Jan 15 12:07:01 2023  - INFO: - device disk/1: 37.40% done, 40m 59s remaining (estimated)
+Sun Jan 15 12:08:01 2023  - INFO: - device disk/1: 39.20% done, 34m 44s remaining (estimated)
+Sun Jan 15 12:09:01 2023  - INFO: - device disk/1: 39.90% done, 1h 24m 38s remaining (estimated)
+Sun Jan 15 12:10:01 2023  - INFO: - device disk/1: 41.40% done, 23m 37s remaining (estimated)
+Sun Jan 15 12:11:01 2023  - INFO: - device disk/1: 42.40% done, 1h 14m 6s remaining (estimated)
+Sun Jan 15 12:12:02 2023  - INFO: - device disk/1: 43.50% done, 33m 3s remaining (estimated)
+Sun Jan 15 12:13:02 2023  - INFO: - device disk/1: 44.90% done, 45m 30s remaining (estimated)
+Sun Jan 15 12:14:02 2023  - INFO: - device disk/1: 45.40% done, 1h 23m 13s remaining (estimated)
+Sun Jan 15 12:15:02 2023  - INFO: - device disk/1: 46.70% done, 29m 54s remaining (estimated)
+Sun Jan 15 12:16:02 2023  - INFO: - device disk/1: 48.00% done, 55m 7s remaining (estimated)
+Sun Jan 15 12:17:03 2023  - INFO: - device disk/1: 48.90% done, 34m 29s remaining (estimated)
+Sun Jan 15 12:18:03 2023  - INFO: - device disk/1: 50.60% done, 34m 22s remaining (estimated)
+Sun Jan 15 12:19:03 2023  - INFO: - device disk/1: 51.20% done, 1h 4m 50s remaining (estimated)
+Sun Jan 15 12:20:03 2023  - INFO: - device disk/1: 52.70% done, 26m 58s remaining (estimated)
+Sun Jan 15 12:21:03 2023  - INFO: - device disk/1: 53.60% done, 1h 26m 59s remaining (estimated)
+Sun Jan 15 12:22:04 2023  - INFO: - device disk/1: 54.50% done, 35m 3s remaining (estimated)
+Sun Jan 15 12:23:04 2023  - INFO: - device disk/1: 55.80% done, 46m 13s remaining (estimated)
+Sun Jan 15 12:24:04 2023  - INFO: - device disk/1: 56.40% done, 52m 56s remaining (estimated)
+Sun Jan 15 12:25:04 2023  - INFO: - device disk/1: 57.80% done, 22m 38s remaining (estimated)
+Sun Jan 15 12:26:04 2023  - INFO: - device disk/1: 58.90% done, 1h 38m 44s remaining (estimated)
+Sun Jan 15 12:27:05 2023  - INFO: - device disk/1: 60.10% done, 25m 20s remaining (estimated)
+Sun Jan 15 12:28:05 2023  - INFO: - device disk/1: 61.40% done, 33m 41s remaining (estimated)
+Sun Jan 15 12:29:05 2023  - INFO: - device disk/1: 62.10% done, 48m 10s remaining (estimated)
+Sun Jan 15 12:30:05 2023  - INFO: - device disk/1: 63.50% done, 19m 56s remaining (estimated)
+Sun Jan 15 12:31:05 2023  - INFO: - device disk/1: 64.40% done, 54m 31s remaining (estimated)
+Sun Jan 15 12:32:06 2023  - INFO: - device disk/1: 65.20% done, 26m 58s remaining (estimated)
+Sun Jan 15 12:33:06 2023  - INFO: - device disk/1: 66.80% done, 1h 2m 2s remaining (estimated)
+Sun Jan 15 12:34:06 2023  - INFO: - device disk/1: 67.30% done, 52m 50s remaining (estimated)
+Sun Jan 15 12:35:06 2023  - INFO: - device disk/1: 68.00% done, 48m 23s remaining (estimated)
+Sun Jan 15 12:36:06 2023  - INFO: - device disk/1: 68.70% done, 50m 18s remaining (estimated)
+Sun Jan 15 12:37:07 2023  - INFO: - device disk/1: 69.70% done, 21m 4s remaining (estimated)
+Sun Jan 15 12:38:07 2023  - INFO: - device disk/1: 71.70% done, 14m 9s remaining (estimated)
+Sun Jan 15 12:39:07 2023  - INFO: - device disk/1: 72.40% done, 39m 28s remaining (estimated)
+Sun Jan 15 12:40:07 2023  - INFO: - device disk/1: 73.80% done, 11m 20s remaining (estimated)
+Sun Jan 15 12:41:07 2023  - INFO: - device disk/1: 74.90% done, 47m 58s remaining (estimated)
+Sun Jan 15 12:42:08 2023  - INFO: - device disk/1: 76.20% done, 11m 1s remaining (estimated)
+Sun Jan 15 12:43:08 2023  - INFO: - device disk/1: 77.80% done, 42m 44s remaining (estimated)
+Sun Jan 15 12:44:08 2023  - INFO: - device disk/1: 78.60% done, 20m 59s remaining (estimated)
+Sun Jan 15 12:45:08 2023  - INFO: - device disk/1: 80.20% done, 10m 38s remaining (estimated)
+Sun Jan 15 12:47:09 2023  - INFO: - device disk/1: 82.30% done, 8m 23s remaining (estimated)
+Sun Jan 15 12:48:09 2023  - INFO: - device disk/1: 84.40% done, 7m 36s remaining (estimated)
+Sun Jan 15 12:49:09 2023  - INFO: - device disk/1: 85.10% done, 22m 47s remaining (estimated)
+Sun Jan 15 12:50:09 2023  - INFO: - device disk/1: 86.00% done, 10m 21s remaining (estimated)
+Sun Jan 15 12:51:10 2023  - INFO: - device disk/1: 87.00% done, 18m 1s remaining (estimated)
+Sun Jan 15 12:52:10 2023  - INFO: - device disk/1: 88.00% done, 8m 34s remaining (estimated)
+Sun Jan 15 12:53:10 2023  - INFO: - device disk/1: 90.30% done, 3m 32s remaining (estimated)
+Sun Jan 15 12:54:10 2023  - INFO: - device disk/1: 90.90% done, 17m 13s remaining (estimated)
+Sun Jan 15 12:55:11 2023  - INFO: - device disk/1: 91.90% done, 5m 17s remaining (estimated)
+Sun Jan 15 12:56:11 2023  - INFO: - device disk/1: 93.00% done, 7m 46s remaining (estimated)
+Sun Jan 15 12:57:11 2023  - INFO: - device disk/1: 94.50% done, 2m 53s remaining (estimated)
+Sun Jan 15 12:58:11 2023  - INFO: - device disk/1: 97.00% done, 2m 29s remaining (estimated)
+Sun Jan 15 12:59:11 2023  - INFO: - device disk/1: 97.70% done, 2m 37s remaining (estimated)
+Sun Jan 15 13:00:12 2023  - INFO: - device disk/1: 99.30% done, 26s remaining (estimated)
+Sun Jan 15 13:00:38 2023  - INFO: - device disk/1: 99.80% done, 15s remaining (estimated)
+Sun Jan 15 13:00:53 2023  - INFO: - device disk/1: 99.80% done, 27s remaining (estimated)
+Sun Jan 15 13:01:20 2023  - INFO: Instance mudrac2's disks are in sync
+
+
+
+
+# TODO
+
+gnt-instance reboot mudrac2
+
+zpool online -e mudrac vdb
