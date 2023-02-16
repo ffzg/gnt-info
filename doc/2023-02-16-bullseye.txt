@@ -1,0 +1,7 @@
+# example of bullseye installation
+
+gnt-instance add -B maxmem=2G,vcpus=2 -t drbd -n r1u32:r1u30 -o debootstrap+bullseye -s 10G --net 0:link=br0002 --no-name-check --no-ip-check -H kvm:initrd_path=,kernel_path= caponeu
+
+exit 0
+
+root@caponeu:~# apt install openssh-server munin-node
