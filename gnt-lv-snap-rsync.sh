@@ -58,7 +58,7 @@ __SHELL__
 	ssh $node sh -xe /dev/shm/$instance.sh
 
 	# execute zfs snap on $rsync_server via ssh command="" wrapper
-	ssh -i /etc/ganeti/id_dsa-zfs-snap $rsync_server $rsync_server/$backup/$instance/$disk_nr
+	ssh -i /etc/ganeti/id_rsa-zamd-snap $rsync_server $rsync_server/$backup/$instance/$disk_nr
 done
 
 if [ $found_lvm = 0 ] ; then
