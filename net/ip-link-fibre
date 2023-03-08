@@ -1,0 +1,1 @@
+ip link | grep UP | grep ' e[^ ]*:' | grep -v @ | cut -d: -f2 | xargs -i sh -c 'ethtool {} | grep FIBRE | sed "s/^.*FIBRE.*$/{}/" '
