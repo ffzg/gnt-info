@@ -4,9 +4,10 @@ use strict;
 use autodie;
 use POSIX;
 use Time::HiRes qw(time sleep);
+use LWP::UserAgent ();
 
 my $DEBUG = $ENV{DEBUG} || 0;
-my $INFLUX = $ENV{INFLUX} || 'http://10.80.3.89:8086/write?consistency=any&db=gnt';
+my $INFLUX = $ENV{INFLUX} || 'http://10.80.3.89:8086/write?consistency=any&db=ganeti';
 my $INTERVAL = $ENV{INTERVAL} || 1;
 my $DC = $ENV{DC};
 my $RACK = $ENV{RACK};
@@ -25,6 +26,9 @@ sub XXX { $DEBUG ? warn "XXX ",Data::Dump::dump( @_ ) : {} };
 
 my $stat;
 my $last;
+
+my $ua = LWP::UserAgent->new(timeout => 10);
+$ua->agent( 'gnt-monitor/0.1' );
 
 while(1) {
 
@@ -162,32 +166,29 @@ sub dump4influx {
 	return $i;
 }
 
-open(my $fh, '>', '/dev/shm/gnt-monitor.influx');
+my $influx_content;
 
 foreach my $instance ( keys %$stat ) {
 
 	next if $skip->{$instance};
 
-	print $fh qq{ganeti_cpu,node=$node,instance=$instance$location cpu=$stat->{$instance}->{cpu},ticks=$stat->{$instance}->{ticks} $t\n};
+	$influx_content .= qq{ganeti_cpu,node=$node,instance=$instance$location cpu=$stat->{$instance}->{cpu},ticks=$stat->{$instance}->{ticks} $t\n};
 
 	foreach my $disk ( @{ $stat->{$instance}->{disk} } ) {
-		print $fh qq{ganeti_disk,node=$node,instance=$instance$location },dump4influx( $disk ), " $t\n";
+		$influx_content .= qq{ganeti_disk,node=$node,instance=$instance$location } . dump4influx( $disk ) . " $t\n";
 	}
 
 	foreach my $nic ( @{ $stat->{$instance}->{nic} } ) {
 		my $vlan = delete $nic->{vlan};
 		$vlan = 0 unless defined $vlan;
-		print $fh qq{ganeti_nic,node=$node,instance=$instance,vlan=${vlan}$location },dump4influx( $nic ), " $t\n";
+		$influx_content .= qq{ganeti_nic,node=$node,instance=$instance,vlan=${vlan}$location } . dump4influx( $nic ) . " $t\n";
 	}
 
 }
 
-close($fh);
-
-if ( system( 'curl', '-s', '-XPOST', $INFLUX, '--data-binary', '@/dev/shm/gnt-monitor.influx' ) == 0 ) {
-} else {
-	rename '/dev/shm/gnt-monitor.influx', '/dev/shm/gnt-monitor.influx.bug.' . scalar glob '/dev/shm/gnt-monitor.influx.bug.*';
-	warn "curl failed: $? $!";
+my $response = $ua->post( $INFLUX, Content => $influx_content );
+if (! $response->is_success) {
+	warn $response->status_line;
 }
 
 my $dt = time() - $begin_t;
