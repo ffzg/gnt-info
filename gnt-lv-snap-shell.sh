@@ -20,7 +20,7 @@ echo "# $instance on $node"
 
 found_lvm=0
 
-ssh $node lvs -o name,tags,vg_name | grep $instance | tee /dev/shm/$instace.$node.lvs | grep disk${disk}_data | while read lv origin vg ; do
+ssh $node lvs -o name,tags,vg_name | grep $instance | tee /dev/shm/$instace.$node.lvs | grep disk${disk} | grep -v disk${disk}_meta | while read lv origin vg ; do
 	found_lvm=1
 
 	disk_nr=`echo $lv | cut -d. -f2 | tr -d a-z_`
