@@ -15,11 +15,17 @@ gnt-instance modify -H root_path=/dev/vda1 omp
 
 gnt-instance start omp
 
-## on instance omp
+## on gnt-instance console omp
+
+mount / -o remount,rw
 
 - check /etc/fstab and update rootfs using blkid or label
 
+blkid
+vi /etc/fstab
+
 apt-get install grub-pc
+apt-get install linux-image-amd64
 
 grub-install /dev/vda
 
@@ -29,7 +35,7 @@ dd if=/dev/zero of=/dev/vda seek=1 count=2047
 
 grub-install /dev/vda
 
-- modify /etc/default/grub to include serial console
+- vi /etc/default/grub to include serial console
 
 GRUB_CMDLINE_LINUX_DEFAULT="console=ttyS0,38400"
 GRUB_TERMINAL=serial
