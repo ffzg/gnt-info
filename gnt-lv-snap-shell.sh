@@ -28,6 +28,15 @@ ssh $node lvs -o name,tags,vg_name | grep $instance | tee /dev/shm/$instace.$nod
 
 cat <<__SHELL__ > /dev/shm/$instance-mount.sh
 
+	if [ -e /dev/shm/$lv.snap ] ; then
+		umount /dev/shm/$lv.snap
+		rmdir /dev/shm/$lv.snap
+	fi
+
+	if [ -e /dev/$vg/$lv.snap ] ; then
+		lvremove -f /dev/$vg/$lv.snap
+	fi
+
 	lvcreate -L8192m -s -n$lv.snap /dev/$vg/$lv
 
 	mkdir /dev/shm/$lv.snap
